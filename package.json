@@ -5,6 +5,7 @@
   "workspaces": ["server"],
   "scripts": {
     "dev": "cd server && bun run dev",
-    "build": "cd server && bun run build"
+    "build": "cd server && bun run build",
+    "agentboard": "bun run scripts/agentboard/index.ts"
   }
 }
