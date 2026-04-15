@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #07090d;
+  --panel: rgba(10, 14, 22, 0.88);
+  --panel-strong: rgba(13, 18, 28, 0.96);
+  --panel-soft: rgba(18, 24, 36, 0.72);
+  --border: rgba(123, 147, 179, 0.16);
+  --border-strong: rgba(149, 176, 211, 0.24);
+  --ink: #e7edf7;
+  --muted: #8d98aa;
+  --accent: #7dd3fc;
+  --accent-strong: #38bdf8;
+  --warn: #f5b94c;
+  --good: #4ade80;
+  --bad: #f87171;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --font-body: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --font-ui: "Trebuchet MS", "Segoe UI", Verdana, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 16%, rgba(125, 211, 252, 0.12), transparent 24%),
+    radial-gradient(circle at 82% 10%, rgba(245, 185, 76, 0.08), transparent 20%),
+    radial-gradient(circle at 40% 110%, rgba(56, 189, 248, 0.08), transparent 20%),
+    linear-gradient(180deg, #05070b 0%, #070b12 45%, #040507 100%);
+  font-family: var(--font-body);
+  overflow: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.7));
+  opacity: 0.35;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.24);
+  color: var(--ink);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass-panel {
+  background: linear-gradient(180deg, rgba(15, 21, 31, 0.92), rgba(10, 13, 20, 0.92));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(20px);
+}
+
+.grid-shell {
+  position: relative;
+}
+
+.grid-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top left, rgba(125, 211, 252, 0.06), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(245, 185, 76, 0.05), transparent 30%);
+}
