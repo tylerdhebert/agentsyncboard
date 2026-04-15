@@ -33,7 +33,7 @@ export const foldersRoutes = new Elysia({ prefix: '/folders' })
     body: t.Partial(t.Object({
       name: t.String(),
       color: t.String(),
-      parentFolderId: t.String(),
+      parentFolderId: t.Nullable(t.String()),
     })),
   })
 

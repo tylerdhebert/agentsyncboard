@@ -2,6 +2,9 @@
   "name": "agentsyncboard",
   "version": "0.0.1",
   "private": true,
+  "bin": {
+    "agentboard": "./scripts/agentboard/index.ts"
+  },
   "workspaces": ["server", "client"],
   "scripts": {
     "dev": "bunx concurrently \"cd server && bun run dev\" \"cd client && bun run dev\"",

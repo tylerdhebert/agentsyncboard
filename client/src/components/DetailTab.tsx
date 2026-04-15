@@ -9,13 +9,9 @@ function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
 
   return (
-    <section className="space-y-2">
-      <h3 className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.35em] text-[var(--muted)]">
-        {label}
-      </h3>
-      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
-        <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--ink)]">{value}</p>
-      </div>
+    <section>
+      <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-[var(--muted)]">{label}</div>
+      <p className="text-sm leading-relaxed text-[var(--ink)] whitespace-pre-wrap">{value}</p>
     </section>
   )
 }
@@ -57,13 +53,13 @@ function ArtifactField({ job }: { job: Job }) {
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.35em] text-[var(--muted)]">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-[var(--muted)]">
           artifact
         </h3>
         {canEdit && !editing && (
           <button
             onClick={() => setEditing(true)}
-            className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--accent)] transition hover:text-[var(--ink)]"
+            className="text-[10px] uppercase tracking-wider text-[var(--accent)] transition hover:text-[var(--ink)]"
           >
             edit
           </button>
@@ -71,35 +67,35 @@ function ArtifactField({ job }: { job: Job }) {
       </div>
 
       {editing ? (
-        <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-3">
+        <div className="space-y-2">
           <textarea
             value={draft}
             onChange={event => setDraft(event.target.value)}
             rows={10}
-            className="w-full rounded-xl border border-[var(--border)] bg-[rgba(5,8,12,0.72)] px-3 py-2 font-[var(--font-mono)] text-[0.82rem] leading-relaxed text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+            className="w-full rounded-lg border border-[var(--border)] bg-[rgba(5,8,12,0.72)] px-3 py-2 font-mono text-sm leading-relaxed text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
           />
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => saveMutation.mutate()}
               disabled={saveMutation.isPending}
-              className="rounded-full border border-[rgba(125,211,252,0.32)] bg-[rgba(56,189,248,0.18)] px-3 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.24)] disabled:opacity-50"
+              className="rounded border border-[rgba(125,211,252,0.32)] bg-[rgba(56,189,248,0.18)] px-3 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.24)] disabled:opacity-50"
             >
-              save
+              Save
             </button>
             <button
               onClick={() => {
                 setEditing(false)
                 setDraft(job.artifact ?? '')
               }}
-              className="rounded-full border border-[var(--border)] bg-white/5 px-3 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)]"
+              className="rounded border border-[var(--border)] bg-white/5 px-3 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--ink)]"
             >
-              cancel
+              Cancel
             </button>
           </div>
         </div>
       ) : job.artifact ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
-          <pre className="whitespace-pre-wrap text-[0.92rem] leading-relaxed text-[var(--ink)]">
+        <div className="rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
+          <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--ink)]">
             {job.artifact}
           </pre>
         </div>
@@ -137,12 +133,12 @@ function ReviewActions({ job }: { job: Job }) {
   if (job.type === 'impl' || job.status !== 'in-review' || !job.requireReview) return null
 
   return (
-    <section className="space-y-3 rounded-2xl border border-[rgba(125,211,252,0.16)] bg-[rgba(56,189,248,0.06)] p-4">
+    <section className="space-y-3 rounded-lg border border-[rgba(125,211,252,0.16)] bg-[rgba(56,189,248,0.06)] p-4">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.35em] text-[rgba(125,211,252,0.9)]">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-[rgba(125,211,252,0.9)]">
           human review
         </h3>
-        <span className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
+        <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">
           approve or request changes
         </span>
       </div>
@@ -152,23 +148,23 @@ function ReviewActions({ job }: { job: Job }) {
         onChange={event => setFeedback(event.target.value)}
         placeholder="Optional note for Request Changes..."
         rows={3}
-        className="w-full rounded-xl border border-[var(--border)] bg-[rgba(5,8,12,0.72)] px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
+        className="w-full rounded-lg border border-[var(--border)] bg-[rgba(5,8,12,0.72)] px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
       />
 
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => approveMutation.mutate()}
           disabled={approveMutation.isPending}
-          className="rounded-full border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.12)] px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(74,222,128,0.2)] disabled:opacity-50"
+          className="rounded border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.12)] px-4 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(74,222,128,0.2)] disabled:opacity-50"
         >
-          approve
+          Approve
         </button>
         <button
           onClick={() => changesMutation.mutate()}
           disabled={changesMutation.isPending}
-          className="rounded-full border border-[var(--border)] bg-white/5 px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)] disabled:opacity-50"
+          className="rounded border border-[var(--border)] bg-white/5 px-4 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
         >
-          request changes
+          Request changes
         </button>
       </div>
     </section>
@@ -179,9 +175,9 @@ function MetaLine({ label, value }: { label: string; value: string | null | unde
   if (!value) return null
 
   return (
-    <div className="space-y-1 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2">
-      <div className="font-[var(--font-ui)] text-[0.56rem] uppercase tracking-[0.3em] text-[var(--muted)]">{label}</div>
-      <div className="break-all font-[var(--font-mono)] text-[0.72rem] leading-relaxed text-[var(--ink)]">{value}</div>
+    <div>
+      <div className="mb-0.5 text-[10px] uppercase tracking-wider text-[var(--muted)]">{label}</div>
+      <div className="break-all font-mono text-xs text-[var(--ink)]">{value}</div>
     </div>
   )
 }
@@ -203,13 +199,6 @@ export function DetailTab({ job }: { job: Job }) {
   })
 
   const repo = useMemo(() => repos.find(entry => entry.id === job.repoId) ?? null, [job.repoId, repos])
-
-  const deleteMutation = useMutation({
-    mutationFn: () => requestJson<{ ok: boolean }>(`/jobs/${job.id}`, { method: 'DELETE' }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
-    },
-  })
 
   const runBuildMutation = useMutation({
     mutationFn: () => requestJson<{ id: string; status: string }>(`/build/${job.id}`, { method: 'POST' }),
@@ -236,9 +225,9 @@ export function DetailTab({ job }: { job: Job }) {
   }, [job.conflictDetails])
 
   return (
-    <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
+    <div className="h-full grid gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-h-0 overflow-y-auto p-5 lg:p-6">
-        <div className="space-y-6">
+        <div className="space-y-5">
           <Field label="Description" value={job.description} />
           <Field label="Plan" value={job.plan} />
           <Field label="Latest update" value={job.latestUpdate} />
@@ -249,19 +238,19 @@ export function DetailTab({ job }: { job: Job }) {
           <ReviewActions job={job} />
 
           {job.type === 'impl' && job.status === 'in-review' && (
-            <div className="rounded-2xl border border-[rgba(245,185,76,0.18)] bg-[rgba(245,185,76,0.08)] px-4 py-3 text-sm text-[var(--warn)]">
+            <div className="rounded-lg border border-[rgba(245,185,76,0.18)] bg-[rgba(245,185,76,0.08)] px-4 py-3 text-sm text-[var(--warn)]">
               Implementation jobs are reviewed through the worktree flow. Use the build tab and CLI approval path to finish the turn.
             </div>
           )}
 
           {job.conflictedAt && (
-            <section className="space-y-2 rounded-2xl border border-[rgba(245,185,76,0.24)] bg-[rgba(245,185,76,0.08)] p-4">
-              <div className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.35em] text-[var(--warn)]">conflict</div>
-              <div className="text-[0.95rem] text-[var(--ink)]">
+            <section className="space-y-2 rounded-lg border border-[rgba(245,185,76,0.24)] bg-[rgba(245,185,76,0.08)] p-4">
+              <div className="text-xs font-medium uppercase tracking-wider text-[var(--warn)]">conflict</div>
+              <div className="text-sm text-[var(--ink)]">
                 Conflicts were detected. Re-run the recheck after resolving the worktree.
               </div>
               {conflictDetails?.files?.length ? (
-                <div className="font-[var(--font-mono)] text-[0.72rem] text-[var(--warn)]">
+                <div className="font-mono text-xs text-[var(--warn)]">
                   {conflictDetails.files.join(', ')}
                 </div>
               ) : null}
@@ -273,7 +262,7 @@ export function DetailTab({ job }: { job: Job }) {
       </div>
 
       <aside className="min-h-0 overflow-y-auto border-l border-[var(--border)] bg-[rgba(4,6,10,0.72)] p-4">
-        <div className="space-y-3">
+        <div className="space-y-4">
           <MetaLine label="Branch" value={job.branchName} />
           <MetaLine label="Base branch" value={job.baseBranch} />
           <MetaLine label="Repo" value={repo ? `${repo.name}\n${repo.path}` : job.repoId} />
@@ -282,45 +271,35 @@ export function DetailTab({ job }: { job: Job }) {
           <MetaLine label="Updated" value={new Date(job.updatedAt).toLocaleString()} />
         </div>
 
-        <div className="mt-5 space-y-2 border-t border-[var(--border)] pt-4">
-          {job.type === 'impl' && (
-            <>
+        {job.type === 'impl' && (
+          <div className="mt-3 flex flex-col gap-1 border-t border-[var(--border)] pt-3">
+            <button
+              onClick={() => runBuildMutation.mutate()}
+              disabled={runBuildMutation.isPending}
+              className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-[var(--muted)] transition hover:bg-white/5 hover:text-[var(--ink)] disabled:opacity-50"
+            >
+              <span>▶</span> Run build
+            </button>
+            {job.conflictedAt && (
               <button
-                onClick={() => runBuildMutation.mutate()}
-                disabled={runBuildMutation.isPending}
-                className="w-full rounded-xl border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.12)] px-4 py-2 text-left font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.18)] disabled:opacity-50"
+                onClick={() => recheckMutation.mutate()}
+                disabled={recheckMutation.isPending}
+                className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-amber-400 transition hover:bg-amber-500/8 disabled:opacity-50"
               >
-                run build
+                <span>⟳</span> Recheck conflicts
               </button>
-              {job.conflictedAt && (
-                <button
-                  onClick={() => recheckMutation.mutate()}
-                  disabled={recheckMutation.isPending}
-                  className="w-full rounded-xl border border-[rgba(245,185,76,0.22)] bg-[rgba(245,185,76,0.1)] px-4 py-2 text-left font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--warn)] transition hover:bg-[rgba(245,185,76,0.14)] disabled:opacity-50"
-                >
-                  recheck conflicts
-                </button>
-              )}
-            </>
-          )}
-
-          <button
-            onClick={() => deleteMutation.mutate()}
-            disabled={deleteMutation.isPending}
-            className="w-full rounded-xl border border-[rgba(248,113,113,0.22)] bg-[rgba(248,113,113,0.08)] px-4 py-2 text-left font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--bad)] transition hover:bg-[rgba(248,113,113,0.14)] disabled:opacity-50"
-          >
-            delete job
-          </button>
-        </div>
+            )}
+          </div>
+        )}
 
         {dependencies.length > 0 && (
-          <section className="mt-5 space-y-2 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-3">
-            <div className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
+          <section className="mt-5 space-y-2 border-t border-[var(--border)] pt-4">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">
               dependencies
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {dependencies.map(dep => (
-                <div key={dep.id} className="rounded-xl border border-[var(--border)] bg-[rgba(5,8,12,0.7)] px-3 py-2 font-[var(--font-mono)] text-[0.68rem] text-[var(--ink)]">
+                <div key={dep.id} className="rounded border border-[var(--border)] bg-[rgba(5,8,12,0.7)] px-3 py-2 font-mono text-xs text-[var(--ink)]">
                   blocker {dep.blockerJobId}
                 </div>
               ))}

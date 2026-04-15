@@ -1,3 +1,5 @@
+#!/usr/bin/env bun
+
 import { jobCommands } from './commands/job'
 import { inputCommands } from './commands/input'
 import { buildCommands } from './commands/build'

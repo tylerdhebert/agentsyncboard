@@ -19,6 +19,7 @@ const TABS: { id: ActiveTab; label: string }[] = [
 
 export function MainPanel() {
   const selectedJobId = useStore(state => state.selectedJobId)
+  const setSelectedJobId = useStore(state => state.setSelectedJobId)
   const activeTab = useStore(state => state.activeTab)
   const setActiveTab = useStore(state => state.setActiveTab)
   const queryClient = useQueryClient()
@@ -47,17 +48,24 @@ export function MainPanel() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: () =>
+      requestJson<{ ok: boolean }>(`/jobs/${selectedJobId}`, { method: 'DELETE' }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+      setSelectedJobId(null)
+    },
+  })
+
   if (!selectedJobId) {
     return (
       <div className="flex h-full items-center justify-center px-8">
-        <div className="max-w-xl rounded-[28px] border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-8 text-center shadow-[0_24px_80px_rgba(0,0,0,0.2)]">
-          <div className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.4em] text-[var(--muted)]">
-            no job selected
-          </div>
-          <h2 className="mt-3 text-3xl font-semibold text-[var(--ink)]">
+        <div className="max-w-xl text-center">
+          <div className="text-xs uppercase tracking-[0.4em] text-[var(--muted)]">no job selected</div>
+          <h2 className="mt-3 text-2xl font-semibold text-[var(--ink)]">
             Pick a job from the tree or create a new one.
           </h2>
-          <p className="mt-3 text-[0.98rem] leading-relaxed text-[var(--muted)]">
+          <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
             The right side becomes the job workspace once a row is selected.
           </p>
         </div>
@@ -68,21 +76,23 @@ export function MainPanel() {
   if (isPending || !job) {
     return (
       <div className="flex h-full items-center justify-center px-8">
-        <div className="rounded-[28px] border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-6 py-5 text-[0.95rem] text-[var(--muted)]">
-          Loading job...
-        </div>
+        <div className="text-sm text-[var(--muted)]">Loading job...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full flex-col">
       <JobHeader
         job={job}
         onToggle={(field, value) => toggleMutation.mutate({ field, value })}
+        onDelete={() => deleteMutation.mutate()}
       />
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[rgba(8,11,16,0.72)] px-5 py-3">
+      <div
+        className="flex flex-shrink-0 items-end border-b border-[var(--border)] px-4"
+        style={{ background: 'rgba(10, 13, 20, 0.7)' }}
+      >
         {TABS.map(tab => {
           if (tab.id !== 'detail' && job.type !== 'impl') {
             return null
@@ -93,10 +103,10 @@ export function MainPanel() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={[
-                'rounded-full px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] transition',
+                '-mb-px border-b-2 px-3 py-2.5 text-[13px] font-medium transition',
                 activeTab === tab.id
-                  ? 'border border-[rgba(125,211,252,0.24)] bg-[rgba(56,189,248,0.12)] text-[var(--ink)]'
-                  : 'border border-transparent bg-white/0 text-[var(--muted)] hover:border-[var(--border)] hover:bg-white/5 hover:text-[var(--ink)]',
+                  ? 'border-[var(--accent)] text-[var(--ink)]'
+                  : 'border-transparent text-[var(--dim)] hover:text-[var(--muted)]',
               ].join(' ')}
             >
               {tab.label}
