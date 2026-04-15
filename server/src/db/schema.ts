@@ -21,7 +21,7 @@ export const folders = sqliteTable('folders', {
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
   refNum: integer('ref_num').notNull(),
-  type: text('type', { enum: ['impl', 'plan', 'review', 'analysis', 'goal'] }).notNull(),
+  type: text('type', { enum: ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] }).notNull(),
   title: text('title').notNull(),
   description: text('description'),
   repoId: text('repo_id').references(() => repos.id),
@@ -88,6 +88,25 @@ export const buildResults = sqliteTable('build_results', {
   completedAt: text('completed_at'),
 })
 
+export const jobReferences = sqliteTable('job_references', {
+  id: text('id').primaryKey(),
+  jobId: text('job_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  type: text('type', { enum: ['job', 'file'] }).notNull(),
+  targetJobId: text('target_job_id'),
+  filePath: text('file_path'),
+  label: text('label'),
+  createdAt: text('created_at').notNull(),
+})
+
+export const jobTypeMandates = sqliteTable('job_type_mandates', {
+  id: text('id').primaryKey(),
+  type: text('type', { enum: ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] }).notNull(),
+  repoId: text('repo_id').references(() => repos.id, { onDelete: 'cascade' }),
+  filePath: text('file_path').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+export type JobTypeMandate = typeof jobTypeMandates.$inferSelect
+
 export type Repo = typeof repos.$inferSelect
 export type NewRepo = typeof repos.$inferInsert
 export type Folder = typeof folders.$inferSelect
@@ -98,3 +117,4 @@ export type JobDependency = typeof jobDependencies.$inferSelect
 export type Comment = typeof comments.$inferSelect
 export type InputRequest = typeof inputRequests.$inferSelect
 export type BuildResult = typeof buildResults.$inferSelect
+export type JobReference = typeof jobReferences.$inferSelect

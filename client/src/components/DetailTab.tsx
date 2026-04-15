@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { requestJson } from '../api/client'
 import { queryKeys } from '../api/keys'
-import type { Comment, Job, JobDependency, Repo } from '../api/types'
+import type { Comment, Job, JobDependency, JobReference, Repo } from '../api/types'
 import { CommentThread } from './CommentThread'
+import { PathPicker } from './PathPicker'
 
 function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
@@ -198,6 +199,58 @@ export function DetailTab({ job }: { job: Job }) {
     enabled: !!job.parentJobId,
   })
 
+  const { data: refs = [] } = useQuery<JobReference[]>({
+    queryKey: queryKeys.refs(job.id),
+    queryFn: () => requestJson<JobReference[]>(`/jobs/${job.id}/refs`),
+  })
+
+  const addRefMutation = useMutation({
+    mutationFn: (body: { type: 'job' | 'file'; targetJobId?: string; filePath?: string; label?: string }) =>
+      requestJson<JobReference>(`/jobs/${job.id}/refs`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.refs(job.id) }),
+  })
+
+  const removeRefMutation = useMutation({
+    mutationFn: (refId: string) =>
+      requestJson<{ ok: boolean }>(`/jobs/${job.id}/refs/${refId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.refs(job.id) }),
+  })
+
+  const [addingRef, setAddingRef] = useState(false)
+  const [refType, setRefType] = useState<'job' | 'file'>('job')
+  const [refJobInput, setRefJobInput] = useState('')
+  const [refFileInput, setRefFileInput] = useState('')
+  const [refLabel, setRefLabel] = useState('')
+
+  const { data: allJobs = [] } = useQuery<Job[]>({
+    queryKey: queryKeys.jobs,
+    queryFn: () => requestJson<Job[]>('/jobs'),
+    enabled: addingRef && refType === 'job',
+  })
+
+  function submitRef() {
+    if (refType === 'job' && refJobInput) {
+      addRefMutation.mutate({
+        type: 'job',
+        targetJobId: refJobInput,
+        label: refLabel || undefined,
+      })
+    } else if (refType === 'file' && refFileInput) {
+      addRefMutation.mutate({
+        type: 'file',
+        filePath: refFileInput,
+        label: refLabel || undefined,
+      })
+    }
+    setAddingRef(false)
+    setRefJobInput('')
+    setRefFileInput('')
+    setRefLabel('')
+  }
+
   const repo = useMemo(() => repos.find(entry => entry.id === job.repoId) ?? null, [job.repoId, repos])
 
   const runBuildMutation = useMutation({
@@ -257,7 +310,7 @@ export function DetailTab({ job }: { job: Job }) {
             </section>
           )}
 
-          <CommentThread jobId={job.id} />
+          <CommentThread jobId={job.id} jobType={job.type} />
         </div>
       </div>
 
@@ -306,6 +359,111 @@ export function DetailTab({ job }: { job: Job }) {
             </div>
           </section>
         )}
+
+        {/* References */}
+        <section className="mt-5 space-y-2 border-t border-[var(--border)] pt-4">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">references</div>
+            <button
+              onClick={() => setAddingRef(v => !v)}
+              className="text-[10px] text-[var(--accent)] transition hover:text-[var(--ink)]"
+            >
+              {addingRef ? 'cancel' : '+ add'}
+            </button>
+          </div>
+
+          {addingRef && (
+            <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[rgba(5,8,12,0.5)] p-3">
+              <div className="flex gap-1">
+                {(['job', 'file'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setRefType(t)}
+                    className={[
+                      'rounded px-2 py-0.5 text-[11px] transition',
+                      refType === t
+                        ? 'bg-white/10 text-[var(--ink)]'
+                        : 'text-[var(--dim)] hover:text-[var(--muted)]',
+                    ].join(' ')}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {refType === 'job' ? (
+                <select
+                  value={refJobInput}
+                  onChange={e => setRefJobInput(e.target.value)}
+                  className="w-full rounded border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-[12px] text-[var(--ink)] outline-none"
+                >
+                  <option value="">Select a job…</option>
+                  {allJobs
+                    .filter(j => j.id !== job.id && !refs.some(r => r.targetJobId === j.id))
+                    .map(j => (
+                      <option key={j.id} value={j.id}>#{j.refNum} {j.title}</option>
+                    ))}
+                </select>
+              ) : (
+                <PathPicker
+                  selectFiles
+                  value={refFileInput}
+                  onChange={setRefFileInput}
+                  placeholder="/absolute/path/to/file"
+                />
+              )}
+
+              <input
+                value={refLabel}
+                onChange={e => setRefLabel(e.target.value)}
+                placeholder="Label (optional)"
+                className="w-full rounded border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-[12px] text-[var(--ink)] outline-none placeholder:text-[var(--dim)]"
+              />
+
+              <button
+                onClick={submitRef}
+                disabled={addRefMutation.isPending || (refType === 'job' ? !refJobInput : !refFileInput)}
+                className="w-full rounded bg-[var(--accent-strong)] py-1.5 text-[11px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
+              >
+                Add reference
+              </button>
+            </div>
+          )}
+
+          {refs.length > 0 && (
+            <div className="space-y-1">
+              {refs.map(ref => (
+                <div key={ref.id} className="group flex items-start gap-2 rounded border border-[var(--border)] bg-[rgba(5,8,12,0.5)] px-2.5 py-2">
+                  <span className="mt-0.5 flex-shrink-0 rounded bg-white/5 px-1 py-px text-[9px] uppercase tracking-wider text-[var(--dim)]">
+                    {ref.type}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    {ref.type === 'job' && ref.targetJob ? (
+                      <div className="truncate text-[12px] text-[var(--ink)]">
+                        #{ref.targetJob.refNum} {ref.targetJob.title}
+                      </div>
+                    ) : (
+                      <div className="truncate font-mono text-[11px] text-[var(--ink)]">{ref.filePath}</div>
+                    )}
+                    {ref.label && (
+                      <div className="truncate text-[10px] text-[var(--dim)]">{ref.label}</div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => removeRefMutation.mutate(ref.id)}
+                    className="flex-shrink-0 text-[10px] text-[var(--dim)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {refs.length === 0 && !addingRef && (
+            <div className="text-[11px] text-[var(--dim)]">No references yet.</div>
+          )}
+        </section>
       </aside>
     </div>
   )

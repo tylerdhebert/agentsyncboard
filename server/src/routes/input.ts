@@ -103,6 +103,13 @@ export const inputRoutes = new Elysia({ prefix: '/input' })
     }
   })
 
-  .get('/pending', () =>
-    db.select().from(inputRequests).where(eq(inputRequests.status, 'pending')).all()
-  )
+  .get('/pending', () => {
+    const pending = db.select().from(inputRequests)
+      .where(eq(inputRequests.status, 'pending'))
+      .all()
+    return pending.map(input => {
+      const job = db.select({ type: jobs.type }).from(jobs)
+        .where(eq(jobs.id, input.jobId)).get()
+      return { ...input, jobType: job?.type ?? null }
+    })
+  })

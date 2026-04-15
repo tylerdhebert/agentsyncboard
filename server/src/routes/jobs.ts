@@ -15,6 +15,7 @@ import {
   getCommits,
   checkConflicts,
   mergeBranch,
+  createBranch,
   type DiffType,
 } from '../git'
 
@@ -108,6 +109,8 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
         t.Literal('review'),
         t.Literal('analysis'),
         t.Literal('goal'),
+        t.Literal('arch'),
+        t.Literal('convo'),
       ]),
       title: t.String(),
       description: t.Optional(t.String()),
@@ -180,6 +183,12 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       const repo = loadRepo(job.repoId)
       const baseBranch = resolveBaseBranch(job, repo)
       wtPath = await worktreeCreate(repo.path, job.branchName, baseBranch)
+    }
+
+    if (job.type === 'goal' && job.repoId && job.branchName) {
+      const repo = loadRepo(job.repoId)
+      const baseBranch = resolveBaseBranch(job, repo)
+      await createBranch(repo.path, job.branchName, baseBranch)
     }
 
     await db.update(jobs)

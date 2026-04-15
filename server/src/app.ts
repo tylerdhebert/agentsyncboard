@@ -8,6 +8,8 @@ import { inputRoutes } from './routes/input'
 import { buildRoutes } from './routes/build'
 import { foldersRoutes } from './routes/folders'
 import { fsRoutes } from './routes/fs'
+import { refsRoutes } from './routes/refs'
+import { mandatesRoutes } from './routes/mandates'
 
 initDb()
 
@@ -34,11 +36,13 @@ export const app = new Elysia()
   .group('/api', app =>
     app
       .use(jobsRoutes)
+      .use(refsRoutes)
       .use(reposRoutes)
       .use(inputRoutes)
       .use(buildRoutes)
       .use(foldersRoutes)
       .use(fsRoutes)
+      .use(mandatesRoutes)
   )
 
 export type App = typeof app

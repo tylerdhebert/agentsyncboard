@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { requestJson } from '../api/client'
 import { queryKeys } from '../api/keys'
-import type { Repo } from '../api/types'
+import type { Repo, JobTypeMandate } from '../api/types'
 import { PathPicker } from './PathPicker'
 
 type RepoForm = {
@@ -134,8 +134,118 @@ function RepoCard({ repo }: { repo: Repo }) {
   )
 }
 
+const JOB_TYPES = ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] as const
+
+function JobInstructionsTab({ repos }: { repos: Repo[] }) {
+  const queryClient = useQueryClient()
+  const [selectedContext, setSelectedContext] = useState('global')
+  const [savedType, setSavedType] = useState<string | null>(null)
+  const [removedType, setRemovedType] = useState<string | null>(null)
+
+  const { data: mandates = [] } = useQuery<JobTypeMandate[]>({
+    queryKey: queryKeys.mandates(selectedContext),
+    queryFn: () => requestJson<JobTypeMandate[]>(`/mandates?repoId=${selectedContext}`),
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: ({ type, filePath }: { type: string; filePath: string }) =>
+      requestJson<JobTypeMandate>('/mandates', {
+        method: 'PUT',
+        body: JSON.stringify({
+          type,
+          ...(selectedContext !== 'global' ? { repoId: selectedContext } : {}),
+          filePath,
+        }),
+      }),
+    onSuccess: async (_, variables) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.mandates(selectedContext) })
+      setSavedType(variables.type)
+      setTimeout(() => setSavedType(t => t === variables.type ? null : t), 2000)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: ({ id }: { id: string; type: string }) =>
+      requestJson<{ ok: boolean }>(`/mandates/${id}`, { method: 'DELETE' }),
+    onSuccess: async (_, variables: { id: string; type: string }) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.mandates(selectedContext) })
+      setSavedType(t => (t === variables.type ? null : t))
+      setRemovedType(variables.type)
+      setTimeout(() => setRemovedType(t => (t === variables.type ? null : t)), 2000)
+    },
+  })
+
+  return (
+    <div className="space-y-4">
+      <select
+        value={selectedContext}
+        onChange={e => setSelectedContext(e.target.value)}
+        className="w-full rounded-md border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[13px] text-[var(--ink)] outline-none transition focus:border-[var(--border-strong)]"
+      >
+        <option value="global">Global</option>
+        {repos.map(repo => (
+          <option key={repo.id} value={repo.id}>{repo.name}</option>
+        ))}
+      </select>
+
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-[var(--border)]">
+            <th className="pb-2 pr-4 text-left text-[11px] font-medium uppercase tracking-wider text-[var(--dim)] w-28">Job Type</th>
+            <th className="pb-2 text-left text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">Instructions File</th>
+          </tr>
+        </thead>
+        <tbody>
+          {JOB_TYPES.map(type => {
+            const mandate = mandates.find(m => m.type === type)
+            const isDeleting = mandate ? deleteMutation.isPending && deleteMutation.variables?.id === mandate.id : false
+            return (
+              <tr key={type} className="border-b border-[var(--border)] last:border-0">
+                <td className="py-3 pr-4 text-[13px] text-[var(--ink)] align-top w-28">{type}</td>
+                <td className="py-3 align-top">
+                  <div className="space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <PathPicker
+                          selectFiles
+                          value={mandate?.filePath ?? ''}
+                          onChange={filePath => {
+                            if (filePath) saveMutation.mutate({ type, filePath })
+                          }}
+                          placeholder="No file configured"
+                        />
+                      </div>
+                      {mandate && (
+                        <button
+                          type="button"
+                          onClick={() => deleteMutation.mutate({ id: mandate.id, type })}
+                          disabled={isDeleting}
+                          className="rounded-md border border-rose-500/20 bg-rose-500/6 px-2.5 py-2 text-[11px] text-rose-300 transition hover:bg-rose-500/12 hover:text-rose-200 disabled:opacity-40"
+                        >
+                          {isDeleting ? 'Removing...' : 'Remove'}
+                        </button>
+                      )}
+                    </div>
+                    {savedType === type && (
+                      <div className="text-[11px] text-emerald-400/80">saved</div>
+                    )}
+                    {removedType === type && (
+                      <div className="text-[11px] text-rose-300/80">removed</div>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
+  const [tab, setTab] = useState<'repos' | 'instructions'>('repos')
   const [name, setName] = useState('')
   const [path, setPath] = useState('')
   const [baseBranch, setBaseBranch] = useState('main')
@@ -179,12 +289,12 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[var(--border-strong)] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
+        className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--border-strong)] shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
         style={{ background: '#111520', maxHeight: '80vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
+        <div className="flex flex-shrink-0 items-center justify-between px-5 py-4">
           <div>
             <h2 className="text-[15px] font-semibold text-[var(--ink)]">Settings</h2>
             <p className="mt-0.5 text-[12px] text-[var(--dim)]">Manage repositories for impl jobs</p>
@@ -199,53 +309,85 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
+        {/* Tab bar */}
+        <div className="flex flex-shrink-0 border-b border-[var(--border)] px-5">
+          <button
+            onClick={() => setTab('repos')}
+            className={`px-4 py-3 text-[12px] font-medium transition border-b-2 -mb-px ${
+              tab === 'repos'
+                ? 'border-[var(--accent)] text-[var(--ink)]'
+                : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'
+            }`}
+          >
+            Repositories
+          </button>
+          <button
+            onClick={() => setTab('instructions')}
+            className={`px-4 py-3 text-[12px] font-medium transition border-b-2 -mb-px ${
+              tab === 'instructions'
+                ? 'border-[var(--accent)] text-[var(--ink)]'
+                : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'
+            }`}
+          >
+            Job Instructions
+          </button>
+        </div>
+
         {/* Body */}
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          {/* Existing repos */}
-          {repos.length > 0 ? (
-            <div className="mb-6 space-y-2">
-              <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">Repositories</div>
-              {repos.map(repo => <RepoCard key={repo.id} repo={repo} />)}
-            </div>
-          ) : (
-            <div className="mb-6 rounded-lg border border-dashed border-[var(--border)] px-4 py-6 text-center text-[13px] text-[var(--dim)]">
-              No repositories yet.
-            </div>
+          {tab === 'repos' && (
+            <>
+              {/* Existing repos */}
+              {repos.length > 0 ? (
+                <div className="mb-6 space-y-2">
+                  <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">Repositories</div>
+                  {repos.map(repo => <RepoCard key={repo.id} repo={repo} />)}
+                </div>
+              ) : (
+                <div className="mb-6 rounded-lg border border-dashed border-[var(--border)] px-4 py-6 text-center text-[13px] text-[var(--dim)]">
+                  No repositories yet.
+                </div>
+              )}
+
+              {/* Add new */}
+              <div>
+                <div className="mb-3 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">Add repository</div>
+                <div className="grid gap-3">
+                  <div>
+                    <Label>Name</Label>
+                    <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="my-repo" />
+                  </div>
+                  <div>
+                    <Label>Path</Label>
+                    <PathPicker value={path} onChange={setPath} />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label>Base branch</Label>
+                      <input value={baseBranch} onChange={e => setBaseBranch(e.target.value)} className={inputCls} placeholder="main" />
+                    </div>
+                    <div>
+                      <Label>Build command</Label>
+                      <input value={buildCommand} onChange={e => setBuildCommand(e.target.value)} className={monoInputCls} placeholder="bun run build" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => createMutation.mutate()}
+                      disabled={!name.trim() || !path.trim() || createMutation.isPending}
+                      className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-[12px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
+                    >
+                      {createMutation.isPending ? 'Adding…' : 'Add repository'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Add new */}
-          <div>
-            <div className="mb-3 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">Add repository</div>
-            <div className="grid gap-3">
-              <div>
-                <Label>Name</Label>
-                <input value={name} onChange={e => setName(e.target.value)} className={inputCls} placeholder="my-repo" />
-              </div>
-              <div>
-                <Label>Path</Label>
-                <PathPicker value={path} onChange={setPath} />
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label>Base branch</Label>
-                  <input value={baseBranch} onChange={e => setBaseBranch(e.target.value)} className={inputCls} placeholder="main" />
-                </div>
-                <div>
-                  <Label>Build command</Label>
-                  <input value={buildCommand} onChange={e => setBuildCommand(e.target.value)} className={monoInputCls} placeholder="bun run build" />
-                </div>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  onClick={() => createMutation.mutate()}
-                  disabled={!name.trim() || !path.trim() || createMutation.isPending}
-                  className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-[12px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
-                >
-                  {createMutation.isPending ? 'Adding…' : 'Add repository'}
-                </button>
-              </div>
-            </div>
-          </div>
+          {tab === 'instructions' && (
+            <JobInstructionsTab repos={repos} />
+          )}
         </div>
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { WS_URL } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
+import { sendNotification } from '../lib/notify'
 
 type Message = { event: string; data: unknown }
 
@@ -37,6 +38,12 @@ export function useWebSocket() {
           if (jobId) {
             queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
           }
+          if (message.event === 'job:updated') {
+            const data = message.data as { status?: string; title?: string }
+            if (data.status === 'in-review') {
+              sendNotification('Ready for review', data.title)
+            }
+          }
         }
 
         if (message.event.startsWith('comment:')) {
@@ -57,13 +64,14 @@ export function useWebSocket() {
         }
 
         if (message.event === 'input:created') {
-          const data = message.data as { id?: string; jobId?: string }
+          const data = message.data as { id?: string; jobId?: string; prompt?: string }
           if (data.id) addPendingInput(data.id)
           queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
           queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
           if (data.jobId) {
             queryClient.invalidateQueries({ queryKey: queryKeys.job(data.jobId) })
           }
+          sendNotification('Agent needs input', data.prompt)
         }
 
         if (message.event === 'input:answered') {

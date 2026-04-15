@@ -7,7 +7,7 @@
   },
   "workspaces": ["server", "client"],
   "scripts": {
-    "dev": "bunx concurrently \"cd server && bun run dev\" \"cd client && bun run dev\"",
+    "dev": "concurrently --kill-others --kill-others-on-fail \"cd server && bun run dev\" \"cd client && bun run dev\"",
     "build": "cd server && bun run build",
     "agentboard": "bun run scripts/agentboard/index.ts"
   },

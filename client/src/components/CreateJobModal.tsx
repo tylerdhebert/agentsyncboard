@@ -5,13 +5,15 @@ import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
 import type { Job, Repo } from '../api/types'
 
-type JobType = 'goal' | 'plan' | 'review' | 'analysis' | 'impl'
+type JobType = 'goal' | 'plan' | 'review' | 'analysis' | 'arch' | 'convo' | 'impl'
 
 const JOB_TYPES: { id: JobType; label: string; description: string; color: string }[] = [
   { id: 'goal', label: 'Goal', description: 'High-level objective', color: 'border-sky-400/30 bg-sky-400/8 text-sky-300' },
   { id: 'plan', label: 'Plan', description: 'Planning & design work', color: 'border-violet-400/30 bg-violet-400/8 text-violet-300' },
   { id: 'review', label: 'Review', description: 'Code or artifact review', color: 'border-fuchsia-400/30 bg-fuchsia-400/8 text-fuchsia-300' },
   { id: 'analysis', label: 'Analysis', description: 'Research & investigation', color: 'border-slate-400/30 bg-slate-400/8 text-slate-300' },
+  { id: 'arch', label: 'Arch', description: 'Architecture and system design', color: 'border-cyan-400/30 bg-cyan-400/8 text-cyan-300' },
+  { id: 'convo', label: 'Convo', description: 'Conversation, discovery, or alignment', color: 'border-orange-400/30 bg-orange-400/8 text-orange-300' },
   { id: 'impl', label: 'Impl', description: 'Implementation with worktree', color: 'border-emerald-400/30 bg-emerald-400/8 text-emerald-300' },
 ]
 
@@ -46,6 +48,8 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (type === 'impl') {
       setBranchName(`agent/${slugify(title)}`)
+    } else if (type === 'goal') {
+      setBranchName(`feature/${slugify(title)}`)
     }
   }, [title, type])
 
@@ -57,7 +61,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
 
   // Default to first repo
   useEffect(() => {
-    if (type === 'impl' && !repoId && repos.length > 0) {
+    if ((type === 'impl' || type === 'goal') && !repoId && repos.length > 0) {
       setRepoId(repos[0].id)
     }
   }, [type, repos, repoId])
@@ -65,6 +69,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
   const canSubmit = useMemo(() => {
     if (!title.trim()) return false
     if (type === 'impl') return !!repoId && !!branchName.trim()
+    if (type === 'goal' && repoId) return !!branchName.trim()
     return true
   }, [title, type, repoId, branchName])
 
@@ -75,6 +80,13 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
         body.repoId = repoId
         body.branchName = branchName.trim()
         body.baseBranch = baseBranch.trim() || 'main'
+      }
+      if (type === 'goal' && repoId) {
+        body.repoId = repoId
+        if (branchName.trim()) {
+          body.branchName = branchName.trim()
+          body.baseBranch = baseBranch.trim() || 'main'
+        }
       }
       return requestJson<Job>('/jobs', {
         method: 'POST',
@@ -141,7 +153,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
           {/* Type selector */}
           <div className="mb-4">
             <div className="mb-2 text-[11px] font-medium text-[var(--muted)]">Type</div>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {JOB_TYPES.map(t => (
                 <button
                   key={t.id}
@@ -161,6 +173,39 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
               {JOB_TYPES.find(t => t.id === type)?.description}
             </p>
           </div>
+
+          {/* Goal optional repo+branch */}
+          {type === 'goal' && (
+            <div className="mb-4 space-y-3 rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] p-3">
+              <div className="text-[11px] text-[var(--dim)]">
+                Optional: attach a repo to create an integration branch when this goal is claimed.
+              </div>
+              <div>
+                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Repository</div>
+                <select
+                  value={repoId}
+                  onChange={e => setRepoId(e.target.value)}
+                  className={inputCls + ' cursor-pointer'}
+                >
+                  <option value="">None</option>
+                  {repos.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              {repoId && (
+                <div>
+                  <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Integration branch</div>
+                  <input
+                    value={branchName}
+                    onChange={e => setBranchName(e.target.value)}
+                    className={inputCls + ' font-mono'}
+                    placeholder="feature/my-feature"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Impl-only fields */}
           {type === 'impl' && (

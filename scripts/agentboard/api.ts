@@ -29,6 +29,10 @@ export async function apiPatch<T = unknown>(path: string, body: unknown): Promis
   })
 }
 
+export async function apiDelete<T = unknown>(path: string): Promise<T> {
+  return request<T>(path, { method: 'DELETE' })
+}
+
 export type Job = {
   id: string
   refNum: number

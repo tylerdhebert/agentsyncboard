@@ -1,4 +1,4 @@
-export type JobType = 'impl' | 'plan' | 'review' | 'analysis' | 'goal'
+export type JobType = 'impl' | 'plan' | 'review' | 'analysis' | 'goal' | 'arch' | 'convo'
 export type JobStatus = 'open' | 'in-progress' | 'blocked' | 'in-review' | 'done'
 export type InputType = 'yesno' | 'choice' | 'text'
 export type InputStatus = 'pending' | 'answered' | 'timeout'
@@ -79,6 +79,7 @@ export type InputRequest = {
   timeoutSecs: number | null
   requestedAt: string
   answeredAt: string | null
+  jobType: string | null
 }
 
 export type BuildResult = {
@@ -88,4 +89,28 @@ export type BuildResult = {
   output: string
   triggeredAt: string
   completedAt: string | null
+}
+
+export type JobTypeMandate = {
+  id: string
+  type: JobType
+  repoId: string | null
+  filePath: string
+  updatedAt: string
+}
+
+export type JobReference = {
+  id: string
+  jobId: string
+  type: 'job' | 'file'
+  targetJobId: string | null
+  filePath: string | null
+  label: string | null
+  createdAt: string
+  targetJob: {
+    id: string
+    refNum: number
+    title: string
+    artifact: string | null
+  } | null
 }

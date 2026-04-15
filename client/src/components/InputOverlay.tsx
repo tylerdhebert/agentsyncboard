@@ -41,13 +41,15 @@ export function InputOverlay() {
     refetchInterval: 5_000,
   })
 
+  const modalPending = pending.filter(input => input.jobType !== 'convo')
+
   useEffect(() => {
-    if (currentIndex >= pending.length) {
+    if (currentIndex >= modalPending.length) {
       setCurrentIndex(0)
     }
-  }, [currentIndex, pending.length])
+  }, [currentIndex, modalPending.length])
 
-  const current = pending[currentIndex] ?? null
+  const current = modalPending[currentIndex] ?? null
   const choices = useMemo(() => parseChoices(current?.choices ?? null), [current?.choices])
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function InputOverlay() {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       await queryClient.invalidateQueries({ queryKey: queryKeys.job(variables.jobId) })
-      setCurrentIndex(index => Math.min(index, Math.max(0, pending.length - 2)))
+      setCurrentIndex(index => Math.min(index, Math.max(0, modalPending.length - 2)))
     },
   })
 
@@ -150,13 +152,17 @@ export function InputOverlay() {
               job #{current.jobId}
             </span>
           </div>
-          {pending.length > 1 && (
+          {modalPending.length > 1 && (
             <div className="ml-auto flex items-center gap-2 text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
-              <span>
-                {currentIndex + 1}/{pending.length}
-              </span>
               <button
-                onClick={() => setCurrentIndex(index => (index + 1) % pending.length)}
+                onClick={() => setCurrentIndex(index => (index - 1 + modalPending.length) % modalPending.length)}
+                className="rounded-full border border-[var(--border)] bg-white/5 px-3 py-1 transition hover:border-[var(--border-strong)] hover:bg-white/10 hover:text-[var(--ink)]"
+              >
+                {'<-'} prev
+              </button>
+              <span>{currentIndex + 1}/{modalPending.length}</span>
+              <button
+                onClick={() => setCurrentIndex(index => (index + 1) % modalPending.length)}
                 className="rounded-full border border-[var(--border)] bg-white/5 px-3 py-1 transition hover:border-[var(--border-strong)] hover:bg-white/10 hover:text-[var(--ink)]"
               >
                 next {'->'}

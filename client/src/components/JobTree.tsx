@@ -18,6 +18,8 @@ const TYPE_LABEL: Record<Job['type'], string> = {
   plan: 'text-violet-400',
   review: 'text-fuchsia-400',
   analysis: 'text-slate-400',
+  arch: 'text-cyan-400',
+  convo: 'text-orange-400',
   impl: 'text-slate-300',
 }
 
@@ -121,10 +123,16 @@ function JobBranch({
   )
 }
 
+function countJobBranch(jobId: string, allJobs: Job[]): number {
+  const children = allJobs.filter(job => job.parentJobId === jobId)
+  return 1 + children.reduce((sum, child) => sum + countJobBranch(child.id, allJobs), 0)
+}
+
 function countJobsInFolder(folderId: string, allFolders: Folder[], allJobs: Job[]): number {
-  const direct = allJobs.filter(j => j.folderId === folderId).length
-  const subFolders = allFolders.filter(f => f.parentFolderId === folderId)
-  return direct + subFolders.reduce((sum, f) => sum + countJobsInFolder(f.id, allFolders, allJobs), 0)
+  const rootJobs = allJobs.filter(job => job.folderId === folderId && !job.parentJobId)
+  const nestedJobCount = rootJobs.reduce((sum, job) => sum + countJobBranch(job.id, allJobs), 0)
+  const subFolders = allFolders.filter(folder => folder.parentFolderId === folderId)
+  return nestedJobCount + subFolders.reduce((sum, folder) => sum + countJobsInFolder(folder.id, allFolders, allJobs), 0)
 }
 
 function isFolderDescendant(folderId: string, potentialParentId: string, allFolders: Folder[]): boolean {
@@ -233,9 +241,24 @@ function FolderBranch({
           ▸
         </span>
         <span
-          className="h-2 w-2 flex-shrink-0 rounded-sm"
-          style={{ backgroundColor: folder.color ?? 'rgba(125, 211, 252, 0.4)' }}
-        />
+          className="flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center"
+          style={{ color: folder.color ?? 'rgba(125, 211, 252, 0.8)' }}
+        >
+          <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5">
+            <path
+              d="M1.75 4A1.75 1.75 0 0 1 3.5 2.25h2.39c.557 0 1.018.285 1.4.654.408.393.8.846 1.46.846h3.75A1.75 1.75 0 0 1 14.25 5.5v6A1.75 1.75 0 0 1 12.5 13.25h-9A1.75 1.75 0 0 1 1.75 11.5V4Z"
+              stroke="currentColor"
+              strokeWidth="1.25"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M1.75 5.75h12.5"
+              stroke="currentColor"
+              strokeWidth="1.25"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
         <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--muted)]">
           {folder.name}
         </span>

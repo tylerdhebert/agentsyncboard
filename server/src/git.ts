@@ -95,6 +95,14 @@ export async function checkConflicts(
   return { hasConflicts: true, details: mergeTreeOutput, files: [...files] }
 }
 
+export async function createBranch(repoPath: string, branchName: string, fromBranch: string): Promise<void> {
+  try {
+    await $`git -C ${repoPath} branch ${branchName} ${fromBranch}`.quiet()
+  } catch {
+    // Branch already exists — that's fine
+  }
+}
+
 export async function mergeBranch(repoPath: string, branchName: string, baseBranch: string): Promise<void> {
   await $`git -C ${repoPath} checkout ${baseBranch}`
   await $`git -C ${repoPath} merge --no-ff ${branchName} -m ${`Merge ${branchName} into ${baseBranch}`}`

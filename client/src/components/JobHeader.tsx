@@ -21,6 +21,8 @@ const TYPE_COLOR: Record<Job['type'], string> = {
   plan: 'border-violet-400/20 bg-violet-400/10 text-violet-200',
   review: 'border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-200',
   analysis: 'border-slate-400/20 bg-slate-400/10 text-slate-200',
+  arch: 'border-cyan-400/20 bg-cyan-400/10 text-cyan-200',
+  convo: 'border-orange-400/20 bg-orange-400/10 text-orange-200',
   impl: 'border-stone-400/20 bg-stone-400/10 text-stone-200',
 }
 

@@ -1,6 +1,37 @@
 import path from 'path'
 import { parseArgs } from '../args'
-import { apiGet, apiPatch, apiPost, resolveJob, type Job } from '../api'
+import { apiDelete, apiGet, apiPatch, apiPost, resolveJob, type Job } from '../api'
+
+type Mandate = { type: string; filePath: string }
+
+async function fetchMandateContent(jobType: string, repoId: string | null): Promise<string | null> {
+  try {
+    if (repoId) {
+      const mandates = await apiGet<Mandate[]>(`/mandates?repoId=${repoId}`)
+      const match = mandates.find(m => m.type === jobType)
+      if (match) {
+        try { return await Bun.file(match.filePath).text() } catch { /* fall through */ }
+      }
+    }
+    const globals = await apiGet<Mandate[]>('/mandates?repoId=global')
+    const match = globals.find(m => m.type === jobType)
+    if (match) {
+      try { return await Bun.file(match.filePath).text() } catch { return null }
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+type JobRef = {
+  id: string
+  type: 'job' | 'file'
+  targetJobId: string | null
+  filePath: string | null
+  label: string | null
+  targetJob: { id: string; refNum: number; title: string; artifact: string | null } | null
+}
 
 function printJob(job: Job) {
   console.log(`\n#${job.refNum} ${job.title}`)
@@ -22,6 +53,11 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     const params = new URLSearchParams()
     if (args.agent) params.set('agentId', args.agent)
     if (args.status) params.set('status', args.status)
+    if (args.type) params.set('type', args.type)
+    if (args.parent) {
+      const parentJob = await resolveJob(args.parent)
+      params.set('parentJobId', parentJob.id)
+    }
     const query = params.toString()
     const jobs = await apiGet<Job[]>(`/jobs${query ? `?${query}` : ''}`)
     if (jobs.length === 0) {
@@ -38,15 +74,48 @@ export async function jobCommands(subcommand: string, argv: string[]) {
   if (subcommand === 'context') {
     if (!args.job) throw new Error('--job is required')
     const job = await resolveJob(args.job)
+
+    const mandateContent = await fetchMandateContent(job.type, job.repoId)
+    if (mandateContent) {
+      console.log('--- AGENT INSTRUCTIONS ---')
+      console.log(mandateContent.trimEnd())
+      console.log('--- END INSTRUCTIONS ---')
+    }
+
     printJob(job)
 
-    const comments = await apiGet<Array<{
-      id: string
-      author: string
-      agentId: string | null
-      body: string
-      createdAt: string
-    }>>(`/jobs/${job.id}/comments`)
+    const [comments, refs] = await Promise.all([
+      apiGet<Array<{
+        id: string
+        author: string
+        agentId: string | null
+        body: string
+        createdAt: string
+      }>>(`/jobs/${job.id}/comments`),
+      apiGet<JobRef[]>(`/jobs/${job.id}/refs`),
+    ])
+
+    if (refs.length > 0) {
+      console.log('\n  references:')
+      for (const ref of refs) {
+        if (ref.type === 'job' && ref.targetJob) {
+          const label = ref.label ? ` (${ref.label})` : ''
+          console.log(`  [job #${ref.targetJob.refNum}] ${ref.targetJob.title}${label}`)
+          if (ref.targetJob.artifact) {
+            console.log(`    artifact:\n    ${ref.targetJob.artifact.replace(/\n/g, '\n    ')}`)
+          }
+        } else if (ref.type === 'file') {
+          const label = ref.label ? ` (${ref.label})` : ''
+          console.log(`  [file] ${ref.filePath}${label}`)
+          try {
+            const content = await Bun.file(ref.filePath!).text()
+            console.log(`    ---\n    ${content.replace(/\n/g, '\n    ')}`)
+          } catch {
+            console.log(`    (could not read file)`)
+          }
+        }
+      }
+    }
 
     if (comments.length > 0) {
       console.log('\n  comments:')
@@ -92,6 +161,10 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     console.log(`Claimed job #${result.job.refNum}: ${result.job.title}`)
     if (result.worktreePath) {
       console.log(`Worktree: ${result.worktreePath}`)
+    }
+    if (result.job.type === 'goal' && result.job.branchName) {
+      console.log(`Integration branch: ${result.job.branchName}`)
+      console.log(`Use --base ${result.job.branchName} when creating impl sub-jobs.`)
     }
     return
   }

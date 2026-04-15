@@ -11,7 +11,9 @@ export const queryKeys = {
   build: (jobId: string) => ['build', jobId] as const,
   builds: ['build'] as const,
   inputPending: ['input', 'pending'] as const,
+  refs: (jobId: string) => ['refs', jobId] as const,
   repos: ['repos'] as const,
   folders: ['folders'] as const,
   ws: ['ws'] as const,
+  mandates: (repoId?: string) => ['mandates', repoId ?? 'global'] as const,
 }

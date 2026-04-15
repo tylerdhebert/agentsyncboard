@@ -3,6 +3,7 @@
 import { jobCommands } from './commands/job'
 import { inputCommands } from './commands/input'
 import { buildCommands } from './commands/build'
+import { refCommands } from './commands/refs'
 
 const [, , group, subcommand, ...rest] = process.argv
 
@@ -11,9 +12,9 @@ function printHelp() {
 agentboard - agentsyncboard CLI
 
 Commands:
-  agentboard job list [--agent <id>] [--status <status>]
+  agentboard job list [--agent <id>] [--status <status>] [--type <type>] [--parent <ref>]
   agentboard job context --job <ref>
-  agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>]
+  agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."]
   agentboard job claim --job <ref> --agent <id>
   agentboard job plan --job <ref> --agent <id> "<text>"
   agentboard job checkpoint --job <ref> --agent <id> "<text>"
@@ -22,7 +23,12 @@ Commands:
   agentboard job ready --job <ref>
   agentboard job worktree --job <ref>
 
-  agentboard input request --job <ref> --agent <id> --type yesno|choice|text --prompt "..." [--choices "a:Label,..."] [--allow-free-text]
+  agentboard ref add --job <ref> --job-ref <ref> [--label "..."]
+  agentboard ref add --job <ref> --file <path>   [--label "..."]
+  agentboard ref remove --job <ref> --ref <ref-id>
+  agentboard ref list --job <ref>
+
+  agentboard input request --job <ref> --agent <id> --type yesno|choice|text --prompt "..." [--choices "a:Label|b:Label"] [--allow-free-text]
   agentboard input wait --job <ref> [--agent <id>]
 
   agentboard build run --job <ref>
@@ -34,6 +40,11 @@ async function main() {
   try {
     if (group === 'job') {
       await jobCommands(subcommand, rest)
+      return
+    }
+
+    if (group === 'ref') {
+      await refCommands(subcommand, rest)
       return
     }
 

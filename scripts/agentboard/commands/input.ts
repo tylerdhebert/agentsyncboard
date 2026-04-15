@@ -16,7 +16,7 @@ export async function inputCommands(subcommand: string, argv: string[]) {
 
     let choices: Choice[] | undefined
     if (args.choices) {
-      choices = args.choices.split(',').map(pair => {
+      choices = args.choices.split('|').map(pair => {
         const index = pair.indexOf(':')
         if (index === -1) {
           const value = pair.trim()
