@@ -1,0 +1,10 @@
+{
+  "name": "agentsyncboard",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": ["server"],
+  "scripts": {
+    "dev": "cd server && bun run dev",
+    "build": "cd server && bun run build"
+  }
+}
