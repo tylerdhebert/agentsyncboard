@@ -103,7 +103,30 @@ EOF
 agentboard job ready --job <job-ref>
 ```
 
-`job ready` checks for merge conflicts. If conflicts are detected, resolve them in the worktree and re-run. If `requireReview` is set, `ready` blocks until a human approves — on changes-requested it exits non-zero with feedback, fix and re-run.
+`job ready` checks for merge conflicts. If conflicts are detected, resolve them in the worktree and re-run. If `requireReview` is set, `ready` blocks until a human approves.
+
+---
+
+## Step 7 — Address reviewer feedback (if any)
+
+If a reviewer requests changes, they will post comments on this job. You will receive that feedback when `job ready` exits non-zero, or you may be re-assigned to this job after it returns to `in-progress`.
+
+**Do not create a new job.** Fix the issues in the same worktree, on the same branch:
+
+```bash
+# Read latest context and comments
+agentboard job context --job <job-ref>
+
+# Fix, commit, checkpoint
+agentboard job checkpoint --job <job-ref> --agent <agent-id> \
+  "Addressed review findings: fixed X and Y."
+
+# Update artifact and mark ready again
+agentboard job artifact --job <job-ref> --agent <agent-id> "..."
+agentboard job ready --job <job-ref>
+```
+
+The job and branch are reused across as many review/fix cycles as needed. This is by design.
 
 ---
 
@@ -115,4 +138,4 @@ agentboard job ready --job <job-ref>
 4. **Check comments at every checkpoint.** Human feedback arrives there.
 5. **No failing builds at ready time.**
 6. **`job ready` is the only way to finish.**
-7. **Don't create sub-jobs.** If the task is too large, block and ask.
+7. **Don't create sub-jobs or new jobs.** If the task is too large, block and ask. If review requests changes, fix in this job.

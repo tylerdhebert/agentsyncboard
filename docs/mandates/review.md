@@ -79,3 +79,4 @@ agentboard job ready --job <job-ref>
 3. **Do not implement fixes.** If you find an issue, document it — don't patch it yourself.
 4. **Post findings as comments while reviewing.** Don't batch everything into the artifact.
 5. **`job ready` is the only way to finish.**
+6. **Do not create new jobs for revisions.** When you request changes, the implementer returns to the same job and branch to address them. Multiple review/fix cycles happen on one job. Never spawn a new impl job for follow-up work.

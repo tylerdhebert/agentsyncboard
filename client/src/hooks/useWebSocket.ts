@@ -22,89 +22,120 @@ export function useWebSocket() {
   const setSelectedJobId = useStore(state => state.setSelectedJobId)
 
   useEffect(() => {
-    const socket = new WebSocket(WS_URL)
+    let socket: WebSocket
+    let pingInterval: ReturnType<typeof setInterval>
+    let reconnectTimeout: ReturnType<typeof setTimeout>
+    let unmounted = false
 
-    socket.onopen = () => setWsConnected(true)
-    socket.onclose = () => setWsConnected(false)
-    socket.onerror = () => setWsConnected(false)
+    function connect() {
+      socket = new WebSocket(WS_URL)
 
-    socket.onmessage = event => {
-      try {
-        const message = JSON.parse(event.data) as Message
-
-        if (message.event.startsWith('job:')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
-          const jobId = readJobId(message.data)
-          if (jobId) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
+      socket.onopen = () => {
+        setWsConnected(true)
+        pingInterval = setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ event: 'ping' }))
           }
-          if (message.event === 'job:updated') {
-            const data = message.data as { status?: string; title?: string }
-            if (data.status === 'in-review') {
-              sendNotification('Ready for review', data.title)
+        }, 30_000)
+      }
+
+      socket.onclose = () => {
+        setWsConnected(false)
+        clearInterval(pingInterval)
+        if (!unmounted) {
+          reconnectTimeout = setTimeout(connect, 3_000)
+        }
+      }
+
+      socket.onerror = () => {
+        socket.close()
+      }
+
+      socket.onmessage = event => {
+        try {
+          const message = JSON.parse(event.data) as Message
+
+          if (message.event === 'pong') return
+
+          if (message.event.startsWith('job:')) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+            const jobId = readJobId(message.data)
+            if (jobId) {
+              queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
+            }
+            if (message.event === 'job:updated') {
+              const data = message.data as { status?: string; title?: string }
+              if (data.status === 'in-review') {
+                sendNotification('Ready for review', data.title)
+              }
             }
           }
-        }
 
-        if (message.event.startsWith('comment:')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.commentsAll })
-          const jobId = readJobId(message.data)
-          if (jobId) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.comments(jobId) })
-            queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
+          if (message.event.startsWith('comment:')) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.commentsAll })
+            const jobId = readJobId(message.data)
+            if (jobId) {
+              queryClient.invalidateQueries({ queryKey: queryKeys.comments(jobId) })
+              queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
+            }
           }
-        }
 
-        if (message.event.startsWith('build:')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.builds })
-          const jobId = readJobId(message.data)
-          if (jobId) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.build(jobId) })
+          if (message.event.startsWith('build:')) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.builds })
+            const jobId = readJobId(message.data)
+            if (jobId) {
+              queryClient.invalidateQueries({ queryKey: queryKeys.build(jobId) })
+            }
           }
-        }
 
-        if (message.event === 'input:created') {
-          const data = message.data as { id?: string; jobId?: string; prompt?: string }
-          if (data.id) addPendingInput(data.id)
-          queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
-          if (data.jobId) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.job(data.jobId) })
+          if (message.event === 'input:created') {
+            const data = message.data as { id?: string; jobId?: string; prompt?: string }
+            if (data.id) addPendingInput(data.id)
+            queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+            if (data.jobId) {
+              queryClient.invalidateQueries({ queryKey: queryKeys.job(data.jobId) })
+            }
+            sendNotification('Agent needs input', data.prompt)
           }
-          sendNotification('Agent needs input', data.prompt)
-        }
 
-        if (message.event === 'input:answered') {
-          const data = message.data as { id?: string; jobId?: string }
-          if (data.id) removePendingInput(data.id)
-          queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
-          queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
-          if (data.jobId) {
-            queryClient.invalidateQueries({ queryKey: queryKeys.job(data.jobId) })
+          if (message.event === 'input:answered') {
+            const data = message.data as { id?: string; jobId?: string }
+            if (data.id) removePendingInput(data.id)
+            queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+            if (data.jobId) {
+              queryClient.invalidateQueries({ queryKey: queryKeys.job(data.jobId) })
+            }
           }
-        }
 
-        if (message.event.startsWith('repo:')) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.repos })
-        }
-
-        if (message.event === 'job:deleted') {
-          const data = message.data as { id?: string }
-          if (data.id) {
-            queryClient.removeQueries({ queryKey: queryKeys.job(data.id) })
-            queryClient.removeQueries({ queryKey: queryKeys.comments(data.id) })
-            queryClient.removeQueries({ queryKey: queryKeys.build(data.id) })
-            queryClient.removeQueries({ queryKey: queryKeys.jobDependencies(data.id) })
-            const selectedJobId = useStore.getState().selectedJobId
-            setSelectedJobId(selectedJobId === data.id ? null : selectedJobId)
+          if (message.event.startsWith('repo:')) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.repos })
           }
+
+          if (message.event === 'job:deleted') {
+            const data = message.data as { id?: string }
+            if (data.id) {
+              queryClient.removeQueries({ queryKey: queryKeys.job(data.id) })
+              queryClient.removeQueries({ queryKey: queryKeys.comments(data.id) })
+              queryClient.removeQueries({ queryKey: queryKeys.build(data.id) })
+              queryClient.removeQueries({ queryKey: queryKeys.jobDependencies(data.id) })
+              const selectedJobId = useStore.getState().selectedJobId
+              setSelectedJobId(selectedJobId === data.id ? null : selectedJobId)
+            }
+          }
+        } catch {
+          // Ignore malformed websocket payloads.
         }
-      } catch {
-        // Ignore malformed websocket payloads.
       }
     }
 
+    connect()
+
     return () => {
+      unmounted = true
+      clearInterval(pingInterval)
+      clearTimeout(reconnectTimeout)
       socket.close()
     }
   }, [addPendingInput, queryClient, removePendingInput, setSelectedJobId, setWsConnected])

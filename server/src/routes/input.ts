@@ -86,6 +86,12 @@ export const inputRoutes = new Elysia({ prefix: '/input' })
     }),
   })
 
+  .get('/:id', ({ params }) => {
+    const input = db.select().from(inputRequests).where(eq(inputRequests.id, params.id)).get()
+    if (!input) throw new Error('not found')
+    return input
+  })
+
   .post('/:id/wait', async ({ params }) => {
     const input = db.select().from(inputRequests).where(eq(inputRequests.id, params.id)).get()
     if (!input) throw new Error('not found')

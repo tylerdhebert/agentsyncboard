@@ -148,7 +148,9 @@ agentboard job list --parent <goal-ref> --status done
 
 Output per line: `#<refNum>  <status>  [<type>]  <title>`
 
-Poll until all children are `done` or `in-review`. `in-review` means the human is handling it — treat it as terminal. Re-check blocked jobs promptly.
+Poll until all children are `done` or `in-review`. `in-review` means a human or reviewer is handling it. Re-check blocked jobs promptly.
+
+**Review/fix cycles happen on the same job.** When a review job requests changes on an impl job, do NOT create a new impl job. Instead, post a comment on the original impl job with the reviewer's findings, and re-assign the same worker (or spawn a new one) to address them in the same branch. The review job stays open until the impl is fixed and the reviewer approves. One impl job + one review job covers all iteration.
 
 ```bash
 while true; do
