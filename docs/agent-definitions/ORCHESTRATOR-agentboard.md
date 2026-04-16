@@ -19,10 +19,10 @@ agentboard job list [--agent <id>] [--status <status>] [--type <type>] [--parent
 agentboard job context --job <ref>
 agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."]
 agentboard job claim --job <ref> --agent <id>
-agentboard job plan --job <ref> --agent <id> "<text>"
-agentboard job checkpoint --job <ref> --agent <id> "<text>"
-agentboard job comment --job <ref> --agent <id> "<text>"
-agentboard job artifact --job <ref> --agent <id> "<text>"
+agentboard job plan --job <ref> --agent <id> "<text>" [--from-file <path>]
+agentboard job checkpoint --job <ref> --agent <id> "<text>" [--from-file <path>]
+agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
+agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job ready --job <ref>
 agentboard job worktree --job <ref>
 
@@ -43,6 +43,9 @@ agentboard input request --job <ref> --agent <id> --type yesno|choice|text --pro
 # ── Build ──────────────────────────────────────────────────────────────────────
 agentboard build run --job <ref>        # fire-and-forget
 agentboard build status --job <ref>     # poll until "passed" or "failed"
+
+# ── Repos ─────────────────────────────────────────────────────────────────────
+agentboard repo list                    # list all repos with their IDs and paths
 ```
 
 **Job statuses:** `open` → `in-progress` → `done` | `blocked` | `in-review`

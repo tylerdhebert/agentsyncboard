@@ -37,13 +37,11 @@ export const buildRoutes = new Elysia({ prefix: '/build' })
       let output = ''
       let status: 'passed' | 'failed' = 'passed'
       try {
-        const proc = $`bash -c ${repo.buildCommand}`.cwd(wtPath)
-        for await (const chunk of proc.stdout) {
-          const text = new TextDecoder().decode(chunk)
-          output += text
-          wsManager.broadcast('build:output', { id, chunk: text })
-        }
-        await proc
+        const result = await $`bash -c ${repo.buildCommand}`.cwd(wtPath).nothrow()
+        output = result.stdout.toString()
+        if (result.stderr.length > 0) output += result.stderr.toString()
+        if (result.exitCode !== 0) status = 'failed'
+        wsManager.broadcast('build:output', { id, chunk: output })
       } catch (error) {
         status = 'failed'
         output += String(error)

@@ -33,17 +33,76 @@ type JobRef = {
   targetJob: { id: string; refNum: number; title: string; artifact: string | null } | null
 }
 
+type Comment = {
+  id: string
+  author: string
+  agentId: string | null
+  body: string
+  createdAt: string
+}
+
 function printJob(job: Job) {
   console.log(`\n#${job.refNum} ${job.title}`)
   console.log(`  type:    ${job.type}`)
   console.log(`  status:  ${job.status}`)
   if (job.agentId) console.log(`  agent:   ${job.agentId}`)
   if (job.branchName) console.log(`  branch:  ${job.branchName}`)
-  if (job.description) console.log(`\n  description:\n  ${job.description}`)
-  if (job.plan) console.log(`\n  plan:\n  ${job.plan}`)
-  if (job.latestUpdate) console.log(`\n  latest update:\n  ${job.latestUpdate}`)
-  if (job.artifact) console.log(`\n  artifact:\n  ${job.artifact}`)
-  if (job.conflictedAt) console.log(`\n  CONFLICTED: ${job.conflictDetails}`)
+  if (job.description) {
+    console.log('\n--- DESCRIPTION ---')
+    console.log(job.description)
+    console.log('--- END DESCRIPTION ---')
+  }
+  if (job.plan) {
+    console.log('\n--- PLAN ---')
+    console.log(job.plan)
+    console.log('--- END PLAN ---')
+  }
+  if (job.latestUpdate) {
+    console.log('\n--- LATEST UPDATE ---')
+    console.log(job.latestUpdate)
+    console.log('--- END LATEST UPDATE ---')
+  }
+  if (job.artifact) {
+    console.log('\n--- ARTIFACT ---')
+    console.log(job.artifact)
+    console.log('--- END ARTIFACT ---')
+  }
+  if (job.conflictedAt) console.log(`\nCONFLICTED: ${job.conflictDetails}`)
+}
+
+/** Read text from a positional arg or --from-file, whichever is provided. */
+async function resolveText(args: ReturnType<typeof parseArgs>, name: string): Promise<string> {
+  if (args['from-file']) {
+    const filePath = args['from-file'] as string
+    try {
+      return (await Bun.file(filePath).text()).trimEnd()
+    } catch {
+      throw new Error(`Could not read file: ${filePath}`)
+    }
+  }
+  const text = args._[0]
+  if (!text) throw new Error(`${name} text is required as a positional argument or --from-file <path>`)
+  return text
+}
+
+/** Poll /jobs/:id every 3s until status is no longer in-review. Returns { outcome, comment }. */
+async function pollReview(jobId: string, timeoutMs: number): Promise<{ outcome: string; comment?: string }> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    await Bun.sleep(3_000)
+    const job = await apiGet<Job>(`/jobs/${jobId}`)
+    if (job.status === 'done') {
+      return { outcome: 'approved' }
+    }
+    if (job.status === 'in-progress') {
+      // Fetch the latest user comment as the changes-requested message
+      const allComments = await apiGet<Comment[]>(`/jobs/${jobId}/comments`)
+      const userComments = allComments.filter(c => c.author === 'user')
+      const latest = userComments.at(-1)
+      return { outcome: 'changes-requested', comment: latest?.body }
+    }
+  }
+  return { outcome: 'timeout' }
 }
 
 export async function jobCommands(subcommand: string, argv: string[]) {
@@ -85,44 +144,40 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     printJob(job)
 
     const [comments, refs] = await Promise.all([
-      apiGet<Array<{
-        id: string
-        author: string
-        agentId: string | null
-        body: string
-        createdAt: string
-      }>>(`/jobs/${job.id}/comments`),
+      apiGet<Comment[]>(`/jobs/${job.id}/comments`),
       apiGet<JobRef[]>(`/jobs/${job.id}/refs`),
     ])
 
     if (refs.length > 0) {
-      console.log('\n  references:')
+      console.log('\n--- REFERENCES ---')
       for (const ref of refs) {
         if (ref.type === 'job' && ref.targetJob) {
           const label = ref.label ? ` (${ref.label})` : ''
-          console.log(`  [job #${ref.targetJob.refNum}] ${ref.targetJob.title}${label}`)
+          console.log(`[job #${ref.targetJob.refNum}] ${ref.targetJob.title}${label}`)
           if (ref.targetJob.artifact) {
-            console.log(`    artifact:\n    ${ref.targetJob.artifact.replace(/\n/g, '\n    ')}`)
+            console.log(`  artifact:\n  ${ref.targetJob.artifact.replace(/\n/g, '\n  ')}`)
           }
         } else if (ref.type === 'file') {
           const label = ref.label ? ` (${ref.label})` : ''
-          console.log(`  [file] ${ref.filePath}${label}`)
+          console.log(`[file] ${ref.filePath}${label}`)
           try {
             const content = await Bun.file(ref.filePath!).text()
-            console.log(`    ---\n    ${content.replace(/\n/g, '\n    ')}`)
+            console.log(`  ---\n  ${content.replace(/\n/g, '\n  ')}`)
           } catch {
-            console.log(`    (could not read file)`)
+            console.log(`  (could not read file)`)
           }
         }
       }
+      console.log('--- END REFERENCES ---')
     }
 
     if (comments.length > 0) {
-      console.log('\n  comments:')
+      console.log('\n--- COMMENTS ---')
       for (const comment of comments) {
         const who = comment.author === 'agent' ? (comment.agentId ?? 'agent') : 'you'
-        console.log(`  [${who}] ${comment.body}`)
+        console.log(`[${who}] ${comment.body}`)
       }
+      console.log('--- END COMMENTS ---')
     }
     return
   }
@@ -172,8 +227,7 @@ export async function jobCommands(subcommand: string, argv: string[]) {
   if (subcommand === 'plan') {
     if (!args.job) throw new Error('--job is required')
     if (!args.agent) throw new Error('--agent is required')
-    const text = args._[0]
-    if (!text) throw new Error('plan text is required as a positional argument')
+    const text = await resolveText(args, 'plan')
     const job = await resolveJob(args.job)
     await apiPatch(`/jobs/${job.id}`, { plan: text })
     await apiPost(`/jobs/${job.id}/comments`, {
@@ -188,8 +242,7 @@ export async function jobCommands(subcommand: string, argv: string[]) {
   if (subcommand === 'checkpoint') {
     if (!args.job) throw new Error('--job is required')
     if (!args.agent) throw new Error('--agent is required')
-    const text = args._[0]
-    if (!text) throw new Error('checkpoint text is required as a positional argument')
+    const text = await resolveText(args, 'checkpoint')
     const job = await resolveJob(args.job)
     await apiPatch(`/jobs/${job.id}`, { latestUpdate: text })
     await apiPost(`/jobs/${job.id}/comments`, {
@@ -198,12 +251,8 @@ export async function jobCommands(subcommand: string, argv: string[]) {
       body: text,
     })
 
-    const comments = await apiGet<Array<{
-      author: string
-      agentId: string | null
-      body: string
-    }>>(`/jobs/${job.id}/comments`)
-    const humanComments = comments.filter(comment => comment.author === 'user')
+    const allComments = await apiGet<Comment[]>(`/jobs/${job.id}/comments`)
+    const humanComments = allComments.filter(comment => comment.author === 'user')
     if (humanComments.length > 0) {
       console.log('\nCheckpoint saved. Human comments on this job:')
       for (const comment of humanComments) {
@@ -218,8 +267,7 @@ export async function jobCommands(subcommand: string, argv: string[]) {
   if (subcommand === 'artifact') {
     if (!args.job) throw new Error('--job is required')
     if (!args.agent) throw new Error('--agent is required')
-    const text = args._[0]
-    if (!text) throw new Error('artifact text is required as a positional argument')
+    const text = await resolveText(args, 'artifact')
     const job = await resolveJob(args.job)
     await apiPatch(`/jobs/${job.id}`, { artifact: text })
     console.log(`Artifact written to job #${job.refNum}.`)
@@ -229,8 +277,7 @@ export async function jobCommands(subcommand: string, argv: string[]) {
   if (subcommand === 'comment') {
     if (!args.job) throw new Error('--job is required')
     if (!args.agent) throw new Error('--agent is required')
-    const text = args._[0]
-    if (!text) throw new Error('comment text is required as a positional argument')
+    const text = await resolveText(args, 'comment')
     const job = await resolveJob(args.job)
     await apiPost(`/jobs/${job.id}/comments`, {
       author: 'agent',
@@ -281,9 +328,7 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     }, 1000)
 
     try {
-      const reviewResult = await apiPost<{ outcome: string; comment?: string }>(
-        `/jobs/${job.id}/await-review`
-      )
+      const reviewResult = await pollReview(updatedJob.id, 1_800_000)
       clearInterval(timer)
       process.stdout.write('\n')
 

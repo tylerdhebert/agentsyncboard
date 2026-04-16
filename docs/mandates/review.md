@@ -21,6 +21,18 @@ answer=$(agentboard input request --job <job-ref> --agent <agent-id> \
 
 ---
 
+## Step 1b — Navigate to the implementation branch (for impl reviews)
+
+If reviewing an impl job, get the worktree path so you can read the actual code:
+
+```bash
+agentboard job worktree --job <impl-job-ref>
+```
+
+This prints the path to the checked-out worktree. `cd` there to read files, run searches, and inspect the diff directly.
+
+---
+
 ## Step 2 — Review systematically
 
 Work through the subject matter methodically. Post a comment for each significant finding as you go — don't save them all for the end:

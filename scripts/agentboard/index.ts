@@ -4,6 +4,7 @@ import { jobCommands } from './commands/job'
 import { inputCommands } from './commands/input'
 import { buildCommands } from './commands/build'
 import { refCommands } from './commands/refs'
+import { repoCommands } from './commands/repos'
 
 const [, , group, subcommand, ...rest] = process.argv
 
@@ -16,10 +17,10 @@ Commands:
   agentboard job context --job <ref>
   agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."]
   agentboard job claim --job <ref> --agent <id>
-  agentboard job plan --job <ref> --agent <id> "<text>"
-  agentboard job checkpoint --job <ref> --agent <id> "<text>"
-  agentboard job artifact --job <ref> --agent <id> "<text>"
-  agentboard job comment --job <ref> --agent <id> "<text>"
+  agentboard job plan --job <ref> --agent <id> "<text>" [--from-file <path>]
+  agentboard job checkpoint --job <ref> --agent <id> "<text>" [--from-file <path>]
+  agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
+  agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job ready --job <ref>
   agentboard job worktree --job <ref>
 
@@ -33,6 +34,8 @@ Commands:
 
   agentboard build run --job <ref>
   agentboard build status --job <ref>
+
+  agentboard repo list
 `)
 }
 
@@ -55,6 +58,11 @@ async function main() {
 
     if (group === 'build') {
       await buildCommands(subcommand, rest)
+      return
+    }
+
+    if (group === 'repo') {
+      await repoCommands(subcommand)
       return
     }
 
