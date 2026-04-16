@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Comment, Job, JobDependency, JobReference, Repo } from '../api/types'
 import { CommentThread } from './CommentThread'
@@ -30,17 +30,11 @@ function ArtifactField({ job }: { job: Job }) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      await requestJson<Job>(`/jobs/${job.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ artifact: draft }),
-      })
-      await requestJson<Comment>(`/jobs/${job.id}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({
-          author: 'user',
-          body: `Human edited artifact at ${new Date().toISOString()}`,
-        }),
-      })
+      await unwrap(api.jobs({ id: job.id }).patch({ artifact: draft }))
+      await unwrap(api.jobs({ id: job.id }).comments.post({
+        author: 'user',
+        body: `Human edited artifact at ${new Date().toISOString()}`,
+      }))
     },
     onSuccess: async () => {
       setEditing(false)
@@ -110,7 +104,7 @@ function ReviewActions({ job }: { job: Job }) {
   const [feedback, setFeedback] = useState('')
 
   const approveMutation = useMutation({
-    mutationFn: () => requestJson<{ ok: boolean }>(`/jobs/${job.id}/approve`, { method: 'POST' }),
+    mutationFn: () => unwrap(api.jobs({ id: job.id }).approve.post()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       await queryClient.invalidateQueries({ queryKey: queryKeys.job(job.id) })
@@ -119,10 +113,7 @@ function ReviewActions({ job }: { job: Job }) {
 
   const changesMutation = useMutation({
     mutationFn: () =>
-      requestJson<{ ok: boolean }>(`/jobs/${job.id}/request-changes`, {
-        method: 'POST',
-        body: JSON.stringify({ comment: feedback.trim() || undefined }),
-      }),
+      unwrap(api.jobs({ id: job.id })['request-changes'].post({ comment: feedback.trim() || undefined })),
     onSuccess: async () => {
       setFeedback('')
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
@@ -187,35 +178,32 @@ export function DetailTab({ job }: { job: Job }) {
   const queryClient = useQueryClient()
   const { data: repos = [] } = useQuery<Repo[]>({
     queryKey: queryKeys.repos,
-    queryFn: () => requestJson<Repo[]>('/repos'),
+    queryFn: () => unwrap(api.repos.get()),
   })
   const { data: dependencies = [] } = useQuery<JobDependency[]>({
     queryKey: queryKeys.jobDependencies(job.id),
-    queryFn: () => requestJson<JobDependency[]>(`/jobs/${job.id}/dependencies`),
+    queryFn: () => unwrap(api.jobs({ id: job.id }).dependencies.get()),
   })
   const { data: parentJob } = useQuery<Job>({
     queryKey: queryKeys.job(job.parentJobId ?? 'none'),
-    queryFn: () => requestJson<Job>(`/jobs/${job.parentJobId}`),
+    queryFn: () => unwrap(api.jobs({ id: job.parentJobId! }).get()),
     enabled: !!job.parentJobId,
   })
 
   const { data: refs = [] } = useQuery<JobReference[]>({
     queryKey: queryKeys.refs(job.id),
-    queryFn: () => requestJson<JobReference[]>(`/jobs/${job.id}/refs`),
+    queryFn: () => unwrap(api.jobs({ id: job.id }).refs.get()),
   })
 
   const addRefMutation = useMutation({
     mutationFn: (body: { type: 'job' | 'file'; targetJobId?: string; filePath?: string; label?: string }) =>
-      requestJson<JobReference>(`/jobs/${job.id}/refs`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      }),
+      unwrap(api.jobs({ id: job.id }).refs.post(body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.refs(job.id) }),
   })
 
   const removeRefMutation = useMutation({
     mutationFn: (refId: string) =>
-      requestJson<{ ok: boolean }>(`/jobs/${job.id}/refs/${refId}`, { method: 'DELETE' }),
+      unwrap(api.jobs({ id: job.id }).refs({ refId }).delete()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.refs(job.id) }),
   })
 
@@ -227,7 +215,7 @@ export function DetailTab({ job }: { job: Job }) {
 
   const { data: allJobs = [] } = useQuery<Job[]>({
     queryKey: queryKeys.jobs,
-    queryFn: () => requestJson<Job[]>('/jobs'),
+    queryFn: () => unwrap(api.jobs.get()),
     enabled: addingRef && refType === 'job',
   })
 
@@ -254,14 +242,14 @@ export function DetailTab({ job }: { job: Job }) {
   const repo = useMemo(() => repos.find(entry => entry.id === job.repoId) ?? null, [job.repoId, repos])
 
   const runBuildMutation = useMutation({
-    mutationFn: () => requestJson<{ id: string; status: string }>(`/build/${job.id}`, { method: 'POST' }),
+    mutationFn: () => unwrap(api.build({ jobId: job.id }).post()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.build(job.id) })
     },
   })
 
   const recheckMutation = useMutation({
-    mutationFn: () => requestJson<{ hasConflicts: boolean }>(`/jobs/${job.id}/recheck-conflicts`, { method: 'POST' }),
+    mutationFn: () => unwrap(api.jobs({ id: job.id })['recheck-conflicts'].post()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       await queryClient.invalidateQueries({ queryKey: queryKeys.job(job.id) })

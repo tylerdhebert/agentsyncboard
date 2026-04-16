@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
 import type { DiffType } from '../store'
@@ -87,7 +87,7 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
 
   const { data, isLoading } = useQuery<{ diff: string }>({
     queryKey: queryKeys.diff(job.id, diffType),
-    queryFn: () => requestJson<{ diff: string }>(`/jobs/${job.id}/diff?type=${diffType}`),
+    queryFn: () => unwrap(api.jobs({ id: job.id }).diff.get({ query: { type: diffType } })),
     enabled: job.type === 'impl' && !!job.branchName,
   })
 

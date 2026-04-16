@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { InputRequest } from '../api/types'
 
@@ -37,7 +37,7 @@ export function InputOverlay() {
 
   const { data: pending = [] } = useQuery<InputRequest[]>({
     queryKey: queryKeys.inputPending,
-    queryFn: () => requestJson<InputRequest[]>('/input/pending'),
+    queryFn: () => unwrap(api.input.pending.get()),
     refetchInterval: 5_000,
   })
 
@@ -60,10 +60,7 @@ export function InputOverlay() {
 
   const answerMutation = useMutation({
     mutationFn: ({ id, jobId, answer }: { id: string; jobId: string; answer: string }) =>
-      requestJson<InputRequest>(`/input/${id}/answer`, {
-        method: 'POST',
-        body: JSON.stringify({ answer }),
-      }),
+      unwrap(api.input({ id }).answer.post({ answer })),
     onSuccess: async (_saved, variables) => {
       setTextAnswer('')
       setFreeTextValue('')

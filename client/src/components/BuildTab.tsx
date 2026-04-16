@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Job, BuildResult } from '../api/types'
 
@@ -14,13 +14,13 @@ export function BuildTab({ job }: { job: Pick<Job, 'id' | 'type' | 'branchName'>
 
   const { data: build, isLoading } = useQuery<BuildResult | null>({
     queryKey: queryKeys.build(job.id),
-    queryFn: () => requestJson<BuildResult | null>(`/build/${job.id}`),
+    queryFn: () => unwrap(api.build({ jobId: job.id }).get()),
     enabled: job.type === 'impl' && !!job.branchName,
     refetchInterval: query => (query.state.data?.status === 'running' ? 2000 : false),
   })
 
   const runMutation = useMutation({
-    mutationFn: () => requestJson<{ id: string; status: 'running' }>(`/build/${job.id}`, { method: 'POST' }),
+    mutationFn: () => unwrap(api.build({ jobId: job.id }).post()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.build(job.id) })
     },

@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 
 type BrowseResult = {
   path: string
@@ -60,13 +60,7 @@ export function PathBrowserPopover({
 
   const { data, isFetching } = useQuery<BrowseResult>({
     queryKey: ['fs-browse', browsing ?? '', selectFiles],
-    queryFn: () => {
-      const params = new URLSearchParams()
-      if (browsing) params.set('path', browsing)
-      if (selectFiles) params.set('files', 'true')
-      const query = params.toString()
-      return requestJson<BrowseResult>(`/fs/browse${query ? `?${query}` : ''}`)
-    },
+    queryFn: () => unwrap(api.fs.browse.get({ query: { path: browsing, files: selectFiles ? 'true' : undefined } })),
     enabled: open,
     placeholderData: keepPreviousData,
   })

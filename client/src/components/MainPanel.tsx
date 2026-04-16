@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore, type ActiveTab } from '../store'
 import type { Job } from '../api/types'
@@ -26,7 +26,7 @@ export function MainPanel() {
 
   const { data: job, isPending, error } = useQuery<Job>({
     queryKey: selectedJobId ? queryKeys.job(selectedJobId) : ['job', 'none'],
-    queryFn: () => requestJson<Job>(`/jobs/${selectedJobId}`),
+    queryFn: () => unwrap(api.jobs({ id: selectedJobId! }).get()),
     enabled: !!selectedJobId,
   })
 
@@ -36,10 +36,7 @@ export function MainPanel() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ field, value }: { field: 'autoMerge' | 'requireReview'; value: boolean }) =>
-      requestJson<Job>(`/jobs/${selectedJobId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ [field]: value }),
-      }),
+      unwrap(api.jobs({ id: selectedJobId! }).patch({ [field]: value })),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       if (selectedJobId) {
@@ -50,7 +47,7 @@ export function MainPanel() {
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      requestJson<{ ok: boolean }>(`/jobs/${selectedJobId}`, { method: 'DELETE' }),
+      unwrap(api.jobs({ id: selectedJobId! }).delete()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       setSelectedJobId(null)

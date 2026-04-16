@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
 import type { Job, Repo } from '../api/types'
@@ -41,7 +41,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
 
   const { data: repos = [] } = useQuery<Repo[]>({
     queryKey: queryKeys.repos,
-    queryFn: () => requestJson<Repo[]>('/repos'),
+    queryFn: () => unwrap(api.repos.get()),
   })
 
   // Auto-fill branch name from title
@@ -75,7 +75,13 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
 
   const createMutation = useMutation({
     mutationFn: () => {
-      const body: Record<string, string> = { title: title.trim(), type }
+      const body: {
+        title: string
+        type: JobType
+        repoId?: string
+        branchName?: string
+        baseBranch?: string
+      } = { title: title.trim(), type }
       if (type === 'impl') {
         body.repoId = repoId
         body.branchName = branchName.trim()
@@ -88,10 +94,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
           body.baseBranch = baseBranch.trim() || 'main'
         }
       }
-      return requestJson<Job>('/jobs', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
+      return unwrap(api.jobs.post(body))
     },
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })

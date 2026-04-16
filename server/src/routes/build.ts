@@ -57,10 +57,10 @@ export const buildRoutes = new Elysia({ prefix: '/build' })
   })
 
   .get('/:jobId', ({ params }) => {
-    const result = db.select().from(buildResults)
+    const results = db.select().from(buildResults)
       .where(eq(buildResults.jobId, params.jobId))
       .orderBy(buildResults.triggeredAt)
       .all()
-      .at(-1) ?? null
+    const result = results.length > 0 ? results[results.length - 1] : null
     return result
   })

@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents working in this repository.
 
 ## What this is
 
@@ -64,7 +64,7 @@ There is no migration runner. `initDb()` in `server/src/db/index.ts` creates tab
 
 ### Client API pattern
 
-`src/api/client.ts` exports a manually-typed `ApiClient` interface cast over an Eden treaty instance. Eden's automatic type inference (used in agent-board) does not work here — Elysia's `~Routes` type produces generic string keys rather than route-specific literals, likely due to the `.onError()` / `.ws()` middleware chain in `app.ts` widening the type. The `ApiClient` interface in `client.ts` is the source of truth for the client-visible API shape.
+`src/api/client.ts` exports a manually-typed `ApiClient` interface cast over an Eden treaty instance. Eden's automatic type inference does not work here — Elysia's `~Routes` type produces generic string keys rather than route-specific literals, likely due to the `.onError()` / `.ws()` middleware chain in `app.ts` widening the type. The `ApiClient` interface in `client.ts` is the source of truth for the client-visible API shape.
 
 When adding a new endpoint:
 

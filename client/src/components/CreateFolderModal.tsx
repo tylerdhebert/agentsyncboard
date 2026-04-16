@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Folder } from '../api/types'
 
@@ -46,14 +46,11 @@ function AddTab({ folders, onClose }: { folders: Folder[]; onClose: () => void }
 
   const createMutation = useMutation({
     mutationFn: () =>
-      requestJson<Folder>('/folders', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: name.trim(),
-          color,
-          ...(parentFolderId ? { parentFolderId } : {}),
-        }),
-      }),
+      unwrap(api.folders.post({
+        name: name.trim(),
+        color,
+        ...(parentFolderId ? { parentFolderId } : {}),
+      })),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       onClose()
@@ -152,10 +149,7 @@ function FolderRow({ folder, folders }: { folder: Folder; folders: Folder[] }) {
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      requestJson<Folder>(`/folders/${folder.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: name.trim(), color, parentFolderId: parentFolderId || null }),
-      }),
+      unwrap(api.folders({ id: folder.id }).patch({ name: name.trim(), color, parentFolderId: parentFolderId || null })),
     onSuccess: async () => {
       setEditing(false)
       await queryClient.invalidateQueries({ queryKey: queryKeys.folders })
@@ -164,7 +158,7 @@ function FolderRow({ folder, folders }: { folder: Folder; folders: Folder[] }) {
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      requestJson<{ ok: boolean }>(`/folders/${folder.id}`, { method: 'DELETE' }),
+      unwrap(api.folders({ id: folder.id }).delete()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
@@ -274,7 +268,7 @@ export function CreateFolderModal({ onClose }: { onClose: () => void }) {
 
   const { data: folders = [] } = useQuery<Folder[]>({
     queryKey: queryKeys.folders,
-    queryFn: () => requestJson<Folder[]>('/folders'),
+    queryFn: () => unwrap(api.folders.get()),
   })
 
   useEffect(() => {

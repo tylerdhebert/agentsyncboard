@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
-import type { Folder, Job } from '../api/types'
+import type { Folder, InputRequest, Job } from '../api/types'
 
 const STATUS_ACCENT: Record<Job['status'], string> = {
   open: '#64748b',
@@ -13,14 +13,30 @@ const STATUS_ACCENT: Record<Job['status'], string> = {
   done: '#34d399',
 }
 
-const TYPE_LABEL: Record<Job['type'], string> = {
+const STATUS_TEXT: Record<Job['status'], string> = {
+  open: 'text-slate-400',
+  'in-progress': 'text-amber-400',
+  blocked: 'text-rose-400',
+  'in-review': 'text-violet-400',
+  done: 'text-emerald-400',
+}
+
+const STATUS_LABEL: Record<Job['status'], string> = {
+  open: 'open',
+  'in-progress': 'running',
+  blocked: 'blocked',
+  'in-review': 'review',
+  done: 'done',
+}
+
+const TYPE_COLOR: Record<Job['type'], string> = {
   goal: 'text-sky-400',
   plan: 'text-violet-400',
   review: 'text-fuchsia-400',
   analysis: 'text-slate-400',
   arch: 'text-cyan-400',
   convo: 'text-orange-400',
-  impl: 'text-slate-300',
+  impl: 'text-emerald-400',
 }
 
 function JobRow({
@@ -28,11 +44,19 @@ function JobRow({
   depth,
   dragJobId,
   setDragJobId,
+  hasChildren = false,
+  collapsed = false,
+  onToggle,
+  hasPendingInput = false,
 }: {
   job: Job
   depth: number
   dragJobId: string | null
   setDragJobId: (id: string | null) => void
+  hasChildren?: boolean
+  collapsed?: boolean
+  onToggle?: () => void
+  hasPendingInput?: boolean
 }) {
   const selectedJobId = useStore(state => state.selectedJobId)
   const setSelectedJobId = useStore(state => state.setSelectedJobId)
@@ -42,10 +66,12 @@ function JobRow({
   const isDragging = dragJobId === job.id
   const isSubJob = !!job.parentJobId
 
+  const showBadges = job.status === 'blocked' || hasPendingInput || !!job.conflictedAt
+
   return (
-    <button
+    <div
       draggable={!isSubJob}
-      onDragStart={isSubJob ? undefined : (e: React.DragEvent<HTMLButtonElement>) => {
+      onDragStart={isSubJob ? undefined : (e: React.DragEvent<HTMLDivElement>) => {
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('jobId', job.id)
         setDragJobId(job.id)
@@ -57,35 +83,86 @@ function JobRow({
       }}
       style={{ marginLeft: depth * 16, cursor: isDragging ? 'grabbing' : 'pointer' }}
       className={[
-        'group relative flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition',
+        'group relative flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition select-none',
         isSelected ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]',
         isDragging ? 'opacity-50' : '',
       ].join(' ')}
     >
       {isSelected && (
         <span
-          className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full"
+          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
           style={{ background: STATUS_ACCENT[job.status] }}
         />
       )}
-      <span
-        className="ml-1.5 h-[7px] w-[7px] flex-shrink-0 rounded-full"
-        style={{ background: STATUS_ACCENT[job.status] }}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-medium text-[var(--ink)]">{job.title}</span>
-        <span className="block truncate text-[11px] text-[var(--dim)]">
-          #{job.refNum}{job.branchName ? ` · ${job.branchName}` : ''}{job.agentId ? ` · ${job.agentId.slice(0, 8)}` : ''}
+
+      {/* Chevron + status dot column */}
+      <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-[3px]">
+        {hasChildren ? (
+          <span
+            onClick={(e: React.MouseEvent) => { e.stopPropagation(); onToggle?.() }}
+            className="text-[10px] text-[var(--dim)] transition-transform hover:text-[var(--muted)]"
+            style={{ display: 'inline-block', transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)' }}
+          >
+            ▸
+          </span>
+        ) : (
+          <span className="text-[10px] opacity-0">▸</span>
+        )}
+        <span
+          className="h-[7px] w-[7px] flex-shrink-0 rounded-full"
+          style={{ background: STATUS_ACCENT[job.status] }}
+        />
+      </div>
+
+      {/* Main content */}
+      <div className="min-w-0 flex-1">
+        <span className="block text-[13px] font-medium leading-snug text-[var(--ink)]">
+          {job.title}
         </span>
-      </span>
-      {/* Fixed-width type badge so it never gets clipped */}
-      <span className={`w-[30px] flex-shrink-0 text-right text-[10px] font-mono ${TYPE_LABEL[job.type]}`}>
-        {job.type.slice(0, 4)}
-      </span>
-      {job.conflictedAt && (
-        <span className="flex-shrink-0 text-[10px] text-amber-400">!</span>
-      )}
-    </button>
+        <span className="mt-0.5 block text-[11px] leading-snug">
+          <span className={TYPE_COLOR[job.type]}>{job.type}</span>
+          {job.agentId && (
+            <>
+              <span className="text-[var(--dim)]"> | </span>
+              <span className="text-amber-300/70">{job.agentId.slice(0, 14)}</span>
+            </>
+          )}
+          <span className="text-[var(--dim)]"> | </span>
+          <span className={STATUS_TEXT[job.status]}>{STATUS_LABEL[job.status]}</span>
+        </span>
+        {job.branchName && (
+          <span className="mt-0.5 block font-mono text-[10px] text-[var(--dim)]">
+            {job.branchName}
+          </span>
+        )}
+      </div>
+
+      {/* Ref number + badges column */}
+      <div className="flex flex-shrink-0 flex-col items-end gap-1">
+        <span className="font-mono text-[11px] text-[var(--dim)]">#{job.refNum}</span>
+        {showBadges && (
+          <div className="flex flex-col items-end gap-0.5">
+            {job.status === 'blocked' && (
+              <span title="blocked" className="text-rose-400">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                  <polygon points="3.5,0 6.5,0 10,3.5 10,6.5 6.5,10 3.5,10 0,6.5 0,3.5" />
+                </svg>
+              </span>
+            )}
+            {hasPendingInput && (
+              <span title="waiting for input" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-amber-400/20 font-bold text-[8px] leading-none text-amber-400">
+                !
+              </span>
+            )}
+            {job.conflictedAt && (
+              <span title="merge conflict" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-orange-400/20 font-bold text-[8px] leading-none text-orange-400">
+                ⚡
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -95,21 +172,38 @@ function JobBranch({
   depth,
   dragJobId,
   setDragJobId,
+  collapsedJobIds,
+  onToggleCollapsed,
+  pendingInputJobIds,
 }: {
   job: Job
   jobs: Job[]
   depth: number
   dragJobId: string | null
   setDragJobId: (id: string | null) => void
+  collapsedJobIds: Set<string>
+  onToggleCollapsed: (id: string) => void
+  pendingInputJobIds: Set<string>
 }) {
   const children = jobs
     .filter(entry => entry.parentJobId === job.id)
     .sort((a, b) => a.refNum - b.refNum)
 
+  const collapsed = collapsedJobIds.has(job.id)
+
   return (
-    <div className="space-y-1">
-      <JobRow job={job} depth={depth} dragJobId={dragJobId} setDragJobId={setDragJobId} />
-      {children.map(child => (
+    <div className="space-y-0.5">
+      <JobRow
+        job={job}
+        depth={depth}
+        dragJobId={dragJobId}
+        setDragJobId={setDragJobId}
+        hasChildren={children.length > 0}
+        collapsed={collapsed}
+        onToggle={() => onToggleCollapsed(job.id)}
+        hasPendingInput={pendingInputJobIds.has(job.id)}
+      />
+      {!collapsed && children.map(child => (
         <JobBranch
           key={child.id}
           job={child}
@@ -117,6 +211,9 @@ function JobBranch({
           depth={depth + 1}
           dragJobId={dragJobId}
           setDragJobId={setDragJobId}
+          collapsedJobIds={collapsedJobIds}
+          onToggleCollapsed={onToggleCollapsed}
+          pendingInputJobIds={pendingInputJobIds}
         />
       ))}
     </div>
@@ -163,6 +260,11 @@ function FolderBranch({
   setDropTargetFolderId,
   onJobDrop,
   onFolderDrop,
+  collapsedJobIds,
+  onToggleCollapsed,
+  pendingInputJobIds,
+  collapsedFolderIds,
+  onToggleFolderCollapsed,
 }: {
   folder: Folder
   folders: Folder[]
@@ -176,8 +278,13 @@ function FolderBranch({
   setDropTargetFolderId: (id: string | null) => void
   onJobDrop: (jobId: string, folderId: string | null) => void
   onFolderDrop: (folderId: string, parentFolderId: string | null) => void
+  collapsedJobIds: Set<string>
+  onToggleCollapsed: (id: string) => void
+  pendingInputJobIds: Set<string>
+  collapsedFolderIds: Set<string>
+  onToggleFolderCollapsed: (id: string) => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const collapsed = collapsedFolderIds.has(folder.id)
 
   const childFolders = folders
     .filter(entry => entry.parentFolderId === folder.id)
@@ -194,7 +301,7 @@ function FolderBranch({
     <div>
       {/* Folder header — clickable to toggle + droppable for DnD */}
       <button
-        onClick={() => setCollapsed(v => !v)}
+        onClick={() => onToggleFolderCollapsed(folder.id)}
         draggable
         onDragStart={(e: React.DragEvent<HTMLButtonElement>) => {
           e.dataTransfer.effectAllowed = 'move'
@@ -286,6 +393,11 @@ function FolderBranch({
               setDropTargetFolderId={setDropTargetFolderId}
               onJobDrop={onJobDrop}
               onFolderDrop={onFolderDrop}
+              collapsedJobIds={collapsedJobIds}
+              onToggleCollapsed={onToggleCollapsed}
+              pendingInputJobIds={pendingInputJobIds}
+              collapsedFolderIds={collapsedFolderIds}
+              onToggleFolderCollapsed={onToggleFolderCollapsed}
             />
           ))}
           {childJobs.map(job => (
@@ -296,6 +408,9 @@ function FolderBranch({
               depth={0}
               dragJobId={dragJobId}
               setDragJobId={setDragJobId}
+              collapsedJobIds={collapsedJobIds}
+              onToggleCollapsed={onToggleCollapsed}
+              pendingInputJobIds={pendingInputJobIds}
             />
           ))}
         </div>
@@ -309,36 +424,58 @@ export function JobTree() {
   const [dragFolderId, setDragFolderId] = useState<string | null>(null)
   const [dropTargetFolderId, setDropTargetFolderId] = useState<string | null>(null)
   const [dropTargetRoot, setDropTargetRoot] = useState(false)
+  const [collapsedJobIds, setCollapsedJobIds] = useState<Set<string>>(new Set())
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(new Set())
 
   const queryClient = useQueryClient()
 
   const { data: jobs = [] } = useQuery<Job[]>({
     queryKey: queryKeys.jobs,
-    queryFn: () => requestJson<Job[]>('/jobs'),
+    queryFn: () => unwrap(api.jobs.get()),
     refetchInterval: 30_000,
   })
 
   const { data: folders = [] } = useQuery<Folder[]>({
     queryKey: queryKeys.folders,
-    queryFn: () => requestJson<Folder[]>('/folders'),
+    queryFn: () => unwrap(api.folders.get()),
     refetchInterval: 60_000,
   })
 
+  const { data: pendingInputs = [] } = useQuery({
+    queryKey: queryKeys.inputPending,
+    queryFn: () => unwrap(api.input.pending.get()),
+    refetchInterval: 30_000,
+  })
+
+  const pendingInputJobIds = new Set(pendingInputs.map((i: InputRequest) => i.jobId))
+
+  function toggleJobCollapsed(jobId: string) {
+    setCollapsedJobIds(prev => {
+      const next = new Set(prev)
+      if (next.has(jobId)) next.delete(jobId)
+      else next.add(jobId)
+      return next
+    })
+  }
+
+  function toggleFolderCollapsed(folderId: string) {
+    setCollapsedFolderIds(prev => {
+      const next = new Set(prev)
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
+      return next
+    })
+  }
+
   const moveMutation = useMutation({
     mutationFn: ({ jobId, folderId }: { jobId: string; folderId: string | null }) =>
-      requestJson<Job>(`/jobs/${jobId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ folderId: folderId ?? null }),
-      }),
+      unwrap(api.jobs({ id: jobId }).patch({ folderId: folderId ?? null })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.jobs }),
   })
 
   const moveFolderMutation = useMutation({
     mutationFn: ({ folderId, parentFolderId }: { folderId: string; parentFolderId: string | null }) =>
-      requestJson<Folder>(`/folders/${folderId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ parentFolderId }),
-      }),
+      unwrap(api.folders({ id: folderId }).patch({ parentFolderId })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.folders }),
   })
 
@@ -367,7 +504,7 @@ export function JobTree() {
   }
 
   return (
-    <div className="space-y-4 px-3 py-3">
+    <div className="space-y-2 px-3 py-3">
       {rootFolders.map(folder => (
         <FolderBranch
           key={folder.id}
@@ -383,6 +520,11 @@ export function JobTree() {
           setDropTargetFolderId={setDropTargetFolderId}
           onJobDrop={handleDrop}
           onFolderDrop={handleFolderDrop}
+          collapsedJobIds={collapsedJobIds}
+          onToggleCollapsed={toggleJobCollapsed}
+          pendingInputJobIds={pendingInputJobIds}
+          collapsedFolderIds={collapsedFolderIds}
+          onToggleFolderCollapsed={toggleFolderCollapsed}
         />
       ))}
       {rootJobs.map(job => (
@@ -393,6 +535,9 @@ export function JobTree() {
           depth={0}
           dragJobId={dragJobId}
           setDragJobId={setDragJobId}
+          collapsedJobIds={collapsedJobIds}
+          onToggleCollapsed={toggleJobCollapsed}
+          pendingInputJobIds={pendingInputJobIds}
         />
       ))}
 

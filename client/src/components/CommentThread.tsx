@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Comment, InputRequest } from '../api/types'
 
@@ -153,7 +153,7 @@ function ConvoInputRequests({ jobId }: { jobId: string }) {
   const queryClient = useQueryClient()
   const { data: allPending = [] } = useQuery<InputRequest[]>({
     queryKey: queryKeys.inputPending,
-    queryFn: () => requestJson<InputRequest[]>('/input/pending'),
+    queryFn: () => unwrap(api.input.pending.get()),
     refetchInterval: 5_000,
   })
 
@@ -162,20 +162,11 @@ function ConvoInputRequests({ jobId }: { jobId: string }) {
   const answerMutation = useMutation({
     mutationFn: async ({ requestId, answer }: { requestId: string; answer: string }) => {
       const request = pending.find(r => r.id === requestId)
-      await requestJson(`/input/${requestId}/answer`, {
-        method: 'POST',
-        body: JSON.stringify({ answer }),
-      })
+      await unwrap(api.input({ id: requestId }).answer.post({ answer }))
       if (request) {
-        await requestJson(`/jobs/${jobId}/comments`, {
-          method: 'POST',
-          body: JSON.stringify({ author: 'agent', agentId: request.agentId, body: request.prompt }),
-        })
+        await unwrap(api.jobs({ id: jobId }).comments.post({ author: 'agent', agentId: request.agentId, body: request.prompt }))
       }
-      await requestJson(`/jobs/${jobId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ author: 'user', body: answer }),
-      })
+      await unwrap(api.jobs({ id: jobId }).comments.post({ author: 'user', body: answer }))
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.inputPending })
@@ -205,15 +196,12 @@ export function CommentThread({ jobId, jobType }: { jobId: string; jobType: stri
 
   const { data: comments = [] } = useQuery<Comment[]>({
     queryKey: queryKeys.comments(jobId),
-    queryFn: () => requestJson<Comment[]>(`/jobs/${jobId}/comments`),
+    queryFn: () => unwrap(api.jobs({ id: jobId }).comments.get()),
   })
 
   const postMutation = useMutation({
     mutationFn: (body: string) =>
-      requestJson<Comment>(`/jobs/${jobId}/comments`, {
-        method: 'POST',
-        body: JSON.stringify({ author: 'user', body }),
-      }),
+      unwrap(api.jobs({ id: jobId }).comments.post({ author: 'user', body })),
     onSuccess: async () => {
       setText('')
       await queryClient.invalidateQueries({ queryKey: queryKeys.comments(jobId) })

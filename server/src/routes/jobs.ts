@@ -20,6 +20,13 @@ import {
 } from '../git'
 
 type Repo = typeof repos.$inferSelect
+const jobStatusSchema = t.Union([
+  t.Literal('open'),
+  t.Literal('in-progress'),
+  t.Literal('blocked'),
+  t.Literal('in-review'),
+  t.Literal('done'),
+])
 
 function loadRepo(repoId: string): Repo {
   const repo = db.select().from(repos).where(eq(repos.id, repoId)).get()
@@ -142,7 +149,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     body: t.Partial(t.Object({
       title: t.String(),
       description: t.String(),
-      status: t.String(),
+      status: jobStatusSchema,
       agentId: t.String(),
       folderId: t.Union([t.String(), t.Null()]),
       parentJobId: t.Union([t.String(), t.Null()]),
@@ -293,7 +300,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       const siblings = db.select().from(jobs)
         .where(
           and(
-            eq(jobs.repoId, job.repoId),
+            eq(jobs.repoId, repo.id),
             eq(jobs.baseBranch, resolvedBaseBranch),
             eq(jobs.type, 'impl'),
           )

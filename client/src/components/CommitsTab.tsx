@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Job } from '../api/types'
 
@@ -8,7 +8,7 @@ type Commit = { sha: string; message: string }
 export function CommitsTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'type'> }) {
   const { data, isLoading } = useQuery<{ commits: Commit[] }>({
     queryKey: queryKeys.commits(job.id),
-    queryFn: () => requestJson<{ commits: Commit[] }>(`/jobs/${job.id}/commits`),
+    queryFn: () => unwrap(api.jobs({ id: job.id }).commits.get()),
     enabled: job.type === 'impl' && !!job.branchName,
   })
 

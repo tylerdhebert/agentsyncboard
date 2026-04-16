@@ -12,11 +12,10 @@
     "strict": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
+    "types": ["bun-types"],
     "paths": {
-      "@server": ["./src/server-shim.d.ts"]
-    },
-    "composite": true,
-    "incremental": true
+      "@server": ["../server/src/types.ts"]
+    }
   },
   "include": ["src"]
 }

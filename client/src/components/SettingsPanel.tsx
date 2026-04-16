@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { requestJson } from '../api/client'
+import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
-import type { Repo, JobTypeMandate } from '../api/types'
+import type { JobType, Repo, JobTypeMandate } from '../api/types'
 import { PathPicker } from './PathPicker'
 
 type RepoForm = {
@@ -53,15 +53,12 @@ function RepoCard({ repo }: { repo: Repo }) {
 
   const updateMutation = useMutation({
     mutationFn: () =>
-      requestJson<Repo>(`/repos/${repo.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          name: draft.name.trim(),
-          path: draft.path.trim(),
-          baseBranch: draft.baseBranch.trim(),
-          ...(draft.buildCommand.trim() ? { buildCommand: draft.buildCommand.trim() } : {}),
-        }),
-      }),
+      unwrap(api.repos({ id: repo.id }).patch({
+        name: draft.name.trim(),
+        path: draft.path.trim(),
+        baseBranch: draft.baseBranch.trim(),
+        ...(draft.buildCommand.trim() ? { buildCommand: draft.buildCommand.trim() } : {}),
+      })),
     onSuccess: async () => {
       setOpen(false)
       await queryClient.invalidateQueries({ queryKey: queryKeys.repos })
@@ -69,7 +66,7 @@ function RepoCard({ repo }: { repo: Repo }) {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: () => requestJson<{ ok: boolean }>(`/repos/${repo.id}`, { method: 'DELETE' }),
+    mutationFn: () => unwrap(api.repos({ id: repo.id }).delete()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.repos }),
   })
 
@@ -144,19 +141,16 @@ function JobInstructionsTab({ repos }: { repos: Repo[] }) {
 
   const { data: mandates = [] } = useQuery<JobTypeMandate[]>({
     queryKey: queryKeys.mandates(selectedContext),
-    queryFn: () => requestJson<JobTypeMandate[]>(`/mandates?repoId=${selectedContext}`),
+    queryFn: () => unwrap(api.mandates.get({ query: { repoId: selectedContext } })),
   })
 
   const saveMutation = useMutation({
-    mutationFn: ({ type, filePath }: { type: string; filePath: string }) =>
-      requestJson<JobTypeMandate>('/mandates', {
-        method: 'PUT',
-        body: JSON.stringify({
-          type,
-          ...(selectedContext !== 'global' ? { repoId: selectedContext } : {}),
-          filePath,
-        }),
-      }),
+    mutationFn: ({ type, filePath }: { type: JobType; filePath: string }) =>
+      unwrap(api.mandates.put({
+        type,
+        ...(selectedContext !== 'global' ? { repoId: selectedContext } : {}),
+        filePath,
+      })),
     onSuccess: async (_, variables) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.mandates(selectedContext) })
       setSavedType(variables.type)
@@ -166,7 +160,7 @@ function JobInstructionsTab({ repos }: { repos: Repo[] }) {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id }: { id: string; type: string }) =>
-      requestJson<{ ok: boolean }>(`/mandates/${id}`, { method: 'DELETE' }),
+      unwrap(api.mandates({ id }).delete()),
     onSuccess: async (_, variables: { id: string; type: string }) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.mandates(selectedContext) })
       setSavedType(t => (t === variables.type ? null : t))
@@ -253,20 +247,17 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   const { data: repos = [] } = useQuery<Repo[]>({
     queryKey: queryKeys.repos,
-    queryFn: () => requestJson<Repo[]>('/repos'),
+    queryFn: () => unwrap(api.repos.get()),
   })
 
   const createMutation = useMutation({
     mutationFn: () =>
-      requestJson<Repo>('/repos', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: name.trim(),
-          path: path.trim(),
-          baseBranch: baseBranch.trim() || 'main',
-          ...(buildCommand.trim() ? { buildCommand: buildCommand.trim() } : {}),
-        }),
-      }),
+      unwrap(api.repos.post({
+        name: name.trim(),
+        path: path.trim(),
+        baseBranch: baseBranch.trim() || 'main',
+        ...(buildCommand.trim() ? { buildCommand: buildCommand.trim() } : {}),
+      })),
     onSuccess: async () => {
       setName('')
       setPath('')
