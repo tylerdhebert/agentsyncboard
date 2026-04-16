@@ -334,6 +334,61 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     return { ok: true, job: updated }
   })
 
+  .post('/:id/merge', async ({ params }) => {
+    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
+    if (!job) throw new Error('not found')
+    if (job.type !== 'impl') throw new Error('only impl jobs can be merged')
+    if (!job.branchName || !job.repoId) throw new Error('job has no branch or repo')
+
+    const repo = loadRepo(job.repoId)
+    const baseBranch = resolveBaseBranch(job, repo)
+
+    const conflicts = await checkConflicts(repo.path, job.branchName, baseBranch)
+    if (conflicts.hasConflicts) {
+      throw new Error(`Merge conflicts in: ${conflicts.files?.join(', ') ?? 'unknown files'}`)
+    }
+
+    await mergeBranch(repo.path, job.branchName, baseBranch)
+    await worktreeRemove(repo.path, job.branchName)
+
+    await db.update(jobs)
+      .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
+      .where(eq(jobs.id, params.id))
+
+    const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+    wsManager.broadcast('job:updated', updated)
+
+    const siblings = db.select().from(jobs)
+      .where(and(eq(jobs.repoId, repo.id), eq(jobs.type, 'impl')))
+      .all()
+      .filter(s => s.id !== job.id && s.status !== 'done' && !!s.branchName)
+
+    for (const sibling of siblings) {
+      if (!sibling.branchName) continue
+      const result = await checkConflicts(repo.path, sibling.branchName, baseBranch)
+      if (result.hasConflicts) {
+        const details = JSON.stringify({ output: result.details, files: result.files })
+        await db.update(jobs)
+          .set({ conflictedAt: now(), conflictDetails: details, updatedAt: now() })
+          .where(eq(jobs.id, sibling.id))
+        await db.insert(comments).values({
+          id: randomId(),
+          jobId: sibling.id,
+          author: 'user',
+          body: `Conflict detected after merge of ${job.branchName}. Affected files: ${result.files.join(', ')}. Resolve in your worktree and re-run agentboard job ready.`,
+          createdAt: now(),
+        })
+        wsManager.broadcast('job:conflicted', { id: sibling.id, files: result.files })
+      } else {
+        await db.update(jobs)
+          .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
+          .where(eq(jobs.id, sibling.id))
+      }
+    }
+
+    return { ok: true as const, job: updated }
+  })
+
   .post('/:id/request-changes', async ({ params, body }) => {
     const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
     if (!job) throw new Error('not found')

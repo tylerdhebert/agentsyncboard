@@ -36,24 +36,26 @@ export function BuildTab({ job }: { job: Pick<Job, 'id' | 'type' | 'branchName'>
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-[var(--border)] bg-[rgba(8,11,16,0.8)] px-5 py-3">
-        <button
-          onClick={() => runMutation.mutate()}
-          disabled={runMutation.isPending || build?.status === 'running'}
-          className="rounded-full border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.12)] px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
-        >
-          run build
-        </button>
-        {build && (
-          <>
-            <span className={`font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.25em] ${STATUS_COLOR[build.status]}`}>
-              {build.status}
-            </span>
-            <span className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.24em] text-[var(--muted)]">
-              {new Date(build.triggeredAt).toLocaleString()}
-            </span>
-          </>
-        )}
+      <div className="flex flex-col gap-2 border-b border-[var(--border)] bg-[rgba(8,11,16,0.8)] px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => runMutation.mutate()}
+            disabled={runMutation.isPending || build?.status === 'running'}
+            className="rounded-full border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.12)] px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
+          >
+            run build
+          </button>
+          {build && (
+            <>
+              <span className={`font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.25em] ${STATUS_COLOR[build.status]}`}>
+                {build.status}
+              </span>
+              <span className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.24em] text-[var(--muted)]">
+                {new Date(build.triggeredAt).toLocaleString()}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-5">

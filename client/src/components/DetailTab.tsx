@@ -256,6 +256,14 @@ export function DetailTab({ job }: { job: Job }) {
     },
   })
 
+  const mergeMutation = useMutation({
+    mutationFn: () => unwrap(api.jobs({ id: job.id }).merge.post()),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.job(job.id) })
+    },
+  })
+
   const conflictDetails = useMemo(() => {
     if (!job.conflictDetails) return null
     try {
@@ -321,6 +329,26 @@ export function DetailTab({ job }: { job: Job }) {
             >
               <span>▶</span> Run build
             </button>
+            {job.repoId && (
+              <button
+                onClick={() => mergeMutation.mutate()}
+                disabled={mergeMutation.isPending || mergeMutation.isSuccess || job.status !== 'done'}
+                className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-[var(--muted)] transition hover:bg-white/5 hover:text-[var(--ink)] disabled:opacity-50"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2v6h-6" />
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                  <path d="M3 22v-6h6" />
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                </svg>
+                {mergeMutation.isPending ? 'Merging…' : mergeMutation.isSuccess ? 'Merged' : 'Merge branch'}
+              </button>
+            )}
+            {mergeMutation.isError && (
+              <span className="px-2 text-[11px] text-rose-400">
+                {(mergeMutation.error as Error).message}
+              </span>
+            )}
             {job.conflictedAt && (
               <button
                 onClick={() => recheckMutation.mutate()}

@@ -100,6 +100,9 @@ type ApiClient = {
     approve: {
       post: () => EdenResult<ApproveResult>
     }
+    merge: {
+      post: () => EdenResult<{ ok: true; job: Job }>
+    }
     'request-changes': {
       post: (body: { comment?: string }) => EdenResult<ApproveResult>
     }
