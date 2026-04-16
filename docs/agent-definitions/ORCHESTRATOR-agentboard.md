@@ -13,17 +13,23 @@ Job refs accept `42`, `#42`, or the full UUID interchangeably. Use your agent ID
 
 ## agentboard CLI Reference
 
+> **Shell preference:** Use bash when available. Fall back to PowerShell only when bash is not accessible in your environment, and use `--from-file` for any multiline input when doing so.
+
 ```bash
 # ── Jobs ──────────────────────────────────────────────────────────────────────
 agentboard job list [--agent <id>] [--status <status>] [--type <type>] [--parent <ref>]
 agentboard job context --job <ref>
-agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."]
+agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."] [--ref-job <ref> [--ref-label "..."]] ...
 agentboard job claim --job <ref> --agent <id>
+agentboard job edit --job <ref> [--title "..."] [--description "..."]
 agentboard job plan --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job checkpoint --job <ref> --agent <id> "<text>" [--from-file <path>]
-agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
+agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
+agentboard job scratch --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job ready --job <ref>
+agentboard job reopen --job <ref>
+agentboard job done --job <ref>
 agentboard job worktree --job <ref>
 
 # ── References ────────────────────────────────────────────────────────────────
@@ -115,6 +121,13 @@ Checkpoint after decomposing:
 ```bash
 agentboard job checkpoint --job <goal-ref> --agent <agent-id> \
   "Decomposed into 3 sub-jobs: #43 (analysis), #44 (impl auth), #45 (impl refresh)."
+```
+
+Use `job scratch` to track working state that doesn't belong in checkpoints — repo IDs discovered, pending sub-job IDs, mid-decomposition notes, or any friction experienced during job execution by you or your agents:
+
+```bash
+agentboard job scratch --job <goal-ref> --agent <agent-id> \
+  "repo id: abc123. sub-jobs created: #43 #44 #45. waiting on #43 before spawning review."
 ```
 
 ---
@@ -253,6 +266,15 @@ Agent ID: impl-auth-1
 ```
 
 That's all they need. The mandate injected by `job context` handles the rest.
+
+For review workers, include the impl job ref so they can navigate to the worktree:
+```
+You are a WORKER-agentboard agent.
+Job: #46  (review job)
+Agent ID: review-auth-1
+Impl job to review: #44
+```
+The impl ref should also be attached as a reference (`ref add`) before the worker claims the job.
 
 ---
 

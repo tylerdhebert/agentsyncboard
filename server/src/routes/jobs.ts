@@ -151,6 +151,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       plan: t.String(),
       latestUpdate: t.String(),
       artifact: t.String(),
+      scratchpad: t.String(),
       handoffSummary: t.String(),
       blockedReason: t.String(),
     })),
@@ -358,6 +359,53 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     body: t.Object({
       comment: t.Optional(t.String()),
     }),
+  })
+
+  .post('/:id/scratch', async ({ params, body }) => {
+    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
+    if (!job) throw new Error('not found')
+
+    const entry = `[${now()} ${body.agentId}] ${body.text}`
+    const updated_scratchpad = job.scratchpad ? `${job.scratchpad}\n${entry}` : entry
+
+    await db.update(jobs)
+      .set({ scratchpad: updated_scratchpad, updatedAt: now() })
+      .where(eq(jobs.id, params.id))
+
+    const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+    wsManager.broadcast('job:updated', updated)
+    return { ok: true }
+  }, {
+    body: t.Object({
+      agentId: t.String(),
+      text: t.String(),
+    }),
+  })
+
+  .post('/:id/reopen', async ({ params }) => {
+    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
+    if (!job) throw new Error('not found')
+
+    await db.update(jobs)
+      .set({ status: 'in-progress', completedAt: null, updatedAt: now() })
+      .where(eq(jobs.id, params.id))
+
+    const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+    wsManager.broadcast('job:updated', updated)
+    return { ok: true, job: updated }
+  })
+
+  .post('/:id/done', async ({ params }) => {
+    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
+    if (!job) throw new Error('not found')
+
+    await db.update(jobs)
+      .set({ status: 'done', completedAt: now(), updatedAt: now() })
+      .where(eq(jobs.id, params.id))
+
+    const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+    wsManager.broadcast('job:updated', updated)
+    return { ok: true, job: updated }
   })
 
   .get('/:id/diff', async ({ params, query }) => {

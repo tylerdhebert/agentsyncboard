@@ -67,6 +67,11 @@ function printJob(job: Job) {
     console.log(job.artifact)
     console.log('--- END ARTIFACT ---')
   }
+  if ((job as Record<string, unknown>).scratchpad) {
+    console.log('\n--- SCRATCHPAD ---')
+    console.log((job as Record<string, unknown>).scratchpad)
+    console.log('--- END SCRATCHPAD ---')
+  }
   if (job.conflictedAt) console.log(`\nCONFLICTED: ${job.conflictDetails}`)
 }
 
@@ -154,6 +159,13 @@ export async function jobCommands(subcommand: string, argv: string[]) {
         if (ref.type === 'job' && ref.targetJob) {
           const label = ref.label ? ` (${ref.label})` : ''
           console.log(`[job #${ref.targetJob.refNum}] ${ref.targetJob.title}${label}`)
+          // Fetch full job to get branch for impl refs
+          try {
+            const fullRef = await apiGet<{ type: string; branchName: string | null }>(`/jobs/${ref.targetJobId}`)
+            if (fullRef.type === 'impl' && fullRef.branchName) {
+              console.log(`  branch: ${fullRef.branchName}`)
+            }
+          } catch { /* best effort */ }
           if (ref.targetJob.artifact) {
             console.log(`  artifact:\n  ${ref.targetJob.artifact.replace(/\n/g, '\n  ')}`)
           }
@@ -201,7 +213,32 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     if (args.description) body.description = args.description
 
     const job = await apiPost<Job>('/jobs', body)
-    console.log(`Created job #${job.refNum}: ${job.title}`)
+    console.log(`created job`)
+    console.log(`  ref:    #${job.refNum}`)
+    console.log(`  id:     ${job.id}`)
+    console.log(`  title:  ${job.title}`)
+    console.log(`  type:   ${job.type}`)
+    console.log(`  status: ${job.status}`)
+
+    // Collect --ref-job and --ref-label from raw argv
+    const refJobArgs: string[] = []
+    const refLabelArgs: string[] = []
+    for (let i = 0; i < argv.length; i++) {
+      if (argv[i] === '--ref-job' && i + 1 < argv.length) refJobArgs.push(argv[++i])
+      else if (argv[i] === '--ref-label' && i + 1 < argv.length) refLabelArgs.push(argv[++i])
+    }
+
+    for (let i = 0; i < refJobArgs.length; i++) {
+      const refJob = await resolveJob(refJobArgs[i])
+      await apiPost(`/jobs/${job.id}/refs`, {
+        type: 'job',
+        targetJobId: refJob.id,
+        label: refLabelArgs[i] ?? null,
+      })
+    }
+    if (refJobArgs.length > 0) {
+      console.log(`  refs:   ${refJobArgs.length} attached`)
+    }
     return
   }
 
@@ -362,6 +399,44 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     const repo = await apiGet<{ path: string }>(`/repos/${job.repoId}`)
     const wtPath = path.join(repo.path, '..', '.git-worktrees', job.branchName)
     console.log(wtPath)
+    return
+  }
+
+  if (subcommand === 'edit') {
+    if (!args.job) throw new Error('--job is required')
+    const job = await resolveJob(args.job)
+    const patch: Record<string, string> = {}
+    if (args.title) patch.title = args.title
+    if (args.description) patch.description = args.description
+    if (Object.keys(patch).length === 0) throw new Error('at least one of --title or --description is required')
+    await apiPatch(`/jobs/${job.id}`, patch)
+    console.log(`Updated job #${job.refNum}.`)
+    return
+  }
+
+  if (subcommand === 'scratch') {
+    if (!args.job) throw new Error('--job is required')
+    if (!args.agent) throw new Error('--agent is required')
+    const text = await resolveText(args, 'scratch')
+    const job = await resolveJob(args.job)
+    await apiPost(`/jobs/${job.id}/scratch`, { agentId: args.agent, text })
+    console.log(`Scratch note added to job #${job.refNum}.`)
+    return
+  }
+
+  if (subcommand === 'reopen') {
+    if (!args.job) throw new Error('--job is required')
+    const job = await resolveJob(args.job)
+    await apiPost(`/jobs/${job.id}/reopen`)
+    console.log(`Job #${job.refNum} moved back to in-progress.`)
+    return
+  }
+
+  if (subcommand === 'done') {
+    if (!args.job) throw new Error('--job is required')
+    const job = await resolveJob(args.job)
+    await apiPost(`/jobs/${job.id}/done`)
+    console.log(`Job #${job.refNum} marked done.`)
     return
   }
 

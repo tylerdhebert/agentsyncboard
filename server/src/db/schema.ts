@@ -38,6 +38,7 @@ export const jobs = sqliteTable('jobs', {
   plan: text('plan'),
   latestUpdate: text('latest_update'),
   artifact: text('artifact'),
+  scratchpad: text('scratchpad'),
   handoffSummary: text('handoff_summary'),
   blockedReason: text('blocked_reason'),
   conflictedAt: text('conflicted_at'),

@@ -1,3 +1,5 @@
+> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+
 # Convo Job Mandate
 
 A `convo` job is a structured conversation with the human. Use it to gather requirements, explore a decision, or get direction on something that needs back-and-forth dialogue. You ask questions using `input request` — the human's replies appear inline in the conversation thread.

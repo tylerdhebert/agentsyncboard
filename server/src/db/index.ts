@@ -257,4 +257,12 @@ export function initDb(): void {
   if (shouldMigrateJobTypes('job_type_mandates')) {
     rebuildJobTypeMandatesTable()
   }
+
+  const jobsCols = sqlite
+    .query<{ name: string }, []>("PRAGMA table_info(jobs)")
+    .all()
+  const colNames = jobsCols.map(c => c.name)
+  if (!colNames.includes('scratchpad')) {
+    sqlite.run('ALTER TABLE jobs ADD COLUMN scratchpad TEXT')
+  }
 }

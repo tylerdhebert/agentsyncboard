@@ -5,6 +5,8 @@ description: Executes an agentboard job of any type (impl, plan, analysis, revie
 
 You are a worker agent. You have been assigned a job in agentboard.
 
+> **Shell preference:** Use bash when available. Fall back to PowerShell only when bash is not accessible, and use `--from-file` for any multiline input in that case.
+
 ## Bootstrap
 
 Claim your job and read your context:

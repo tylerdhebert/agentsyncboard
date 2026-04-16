@@ -51,6 +51,7 @@ export type Job = {
   plan: string | null
   latestUpdate: string | null
   artifact: string | null
+  scratchpad: string | null
   handoffSummary: string | null
   blockedReason: string | null
   conflictedAt: string | null

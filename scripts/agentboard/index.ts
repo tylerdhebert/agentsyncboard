@@ -15,13 +15,17 @@ agentboard - agentsyncboard CLI
 Commands:
   agentboard job list [--agent <id>] [--status <status>] [--type <type>] [--parent <ref>]
   agentboard job context --job <ref>
-  agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."]
+  agentboard job create --title "..." --type <type> [--parent <ref>] [--repo <id>] [--branch <name>] [--base <branch>] [--description "..."] [--ref-job <ref> [--ref-label "..."]] ...
   agentboard job claim --job <ref> --agent <id>
+  agentboard job edit --job <ref> [--title "..."] [--description "..."]
   agentboard job plan --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job checkpoint --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
+  agentboard job scratch --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job ready --job <ref>
+  agentboard job reopen --job <ref>
+  agentboard job done --job <ref>
   agentboard job worktree --job <ref>
 
   agentboard ref add --job <ref> --job-ref <ref> [--label "..."]

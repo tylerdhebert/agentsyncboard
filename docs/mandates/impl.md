@@ -1,3 +1,5 @@
+> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+
 # Implementation Job Mandate
 
 You are implementing code in a worktree. Your job has a defined scope — execute it, commit your work, and hand off cleanly. Do not expand scope or create sub-jobs.
@@ -54,6 +56,8 @@ agentboard job checkpoint --job <job-ref> --agent <agent-id> \
 ```
 
 Check the checkpoint output for new human comments — they may redirect your work.
+
+Use `job scratch` for working notes that don't belong in the official checkpoint trail — dead ends, things to revisit, context you want to preserve across restarts.
 
 ---
 
@@ -116,7 +120,15 @@ If a reviewer requests changes, they will post comments on this job. You will re
 ```bash
 # Read latest context and comments
 agentboard job context --job <job-ref>
+```
 
+Use `job scratch` to log your progress across review cycles so context isn't lost:
+```bash
+agentboard job scratch --job <job-ref> --agent <agent-id> \
+  "Review cycle 2: addressed X and Y. Still investigating Z."
+```
+
+```bash
 # Fix, commit, checkpoint
 agentboard job checkpoint --job <job-ref> --agent <agent-id> \
   "Addressed review findings: fixed X and Y."

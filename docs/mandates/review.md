@@ -1,35 +1,31 @@
+> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+
 # Review Job Mandate
 
 You are reviewing another job's output — a branch, an artifact, or a design. You do not implement changes. You assess, document findings, and deliver a clear verdict.
 
 ---
 
-
-## Step 1 — Claim and read context
+## Step 1 — Claim, read context, and navigate
 
 ```bash
 agentboard job claim --job <job-ref> --agent <agent-id>
 agentboard job context --job <job-ref>
 ```
 
-The job being reviewed should be attached as a reference. Its artifact and branch are your primary inputs. If no reference is attached, ask before proceeding:
+The subject of the review will be in the references. If no reference is attached, ask before proceeding:
 
 ```bash
 answer=$(agentboard input request --job <job-ref> --agent <agent-id> \
   --type text --prompt "No reference job is attached. Which job or branch should I review?")
 ```
 
----
-
-## Step 1b — Navigate to the implementation branch (for impl reviews)
-
-If reviewing an impl job, get the worktree path so you can read the actual code:
+If the referenced job is an impl job, get its worktree path and `cd` there:
 
 ```bash
 agentboard job worktree --job <impl-job-ref>
+# cd <path printed above>
 ```
-
-This prints the path to the checked-out worktree. `cd` there to read files, run searches, and inspect the diff directly.
 
 ---
 
@@ -91,4 +87,3 @@ agentboard job ready --job <job-ref>
 3. **Do not implement fixes.** If you find an issue, document it — don't patch it yourself.
 4. **Post findings as comments while reviewing.** Don't batch everything into the artifact.
 5. **`job ready` is the only way to finish.**
-6. **Do not create new jobs for revisions.** When you request changes, the implementer returns to the same job and branch to address them. Multiple review/fix cycles happen on one job. Never spawn a new impl job for follow-up work.
