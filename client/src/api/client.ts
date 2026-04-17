@@ -11,15 +11,11 @@ export const api = treaty<App>(API_BASE, {
   },
 })
 
-// EdenResult<T> matches the TreatyResponse shape from @elysiajs/eden treaty2.
-// error.status is unknown (not number) when no explicit error codes are defined on the route.
-type EdenResult<T> = Promise<{ data: T | null; error: { status: unknown; value: unknown } | null } & Record<string, unknown>>
-
 // Unwrap an Eden treaty response, throwing on error
-export async function unwrap<T>(result: EdenResult<T>): Promise<T> {
+export async function unwrap<T>(result: Promise<{ data: T | null; error: unknown } & Record<string, unknown>>): Promise<T> {
   const { data, error } = await result
   if (error) {
-    const val = error.value
+    const val = (error as Record<string, unknown>).value
     let msg: string
     if (typeof val === 'string') msg = val
     else if (val && typeof val === 'object' && 'error' in val) msg = String((val as Record<string, unknown>).error)
