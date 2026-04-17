@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
@@ -70,32 +71,32 @@ function AddTab({ folders, onClose }: { folders: Folder[]; onClose: () => void }
   return (
     <div className="space-y-4 p-5">
       <div>
-        <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Name</div>
+        <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">name</div>
         <input
           autoFocus
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g. Sprint 1"
+          placeholder="e.g. sprint 1"
           className={inputCls}
         />
       </div>
 
       <div>
-        <div className="mb-2 text-[11px] font-medium text-[var(--muted)]">Color</div>
+        <div className="mb-2 text-[11px] font-medium text-[var(--muted)]">color</div>
         <ColorSwatches value={color} onChange={setColor} />
       </div>
 
       {folders.length > 0 && (
         <div>
           <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">
-            Parent folder <span className="text-[var(--dim)]">(optional)</span>
+            parent folder <span className="text-[var(--dim)]">(optional)</span>
           </div>
           <select
             value={parentFolderId}
             onChange={e => setParentFolderId(e.target.value)}
             className={inputCls + ' cursor-pointer'}
           >
-            <option value="">None (top level)</option>
+            <option value="">none (top level)</option>
             {folders.map(f => (
               <option key={f.id} value={f.id}>{f.name}</option>
             ))}
@@ -104,20 +105,20 @@ function AddTab({ folders, onClose }: { folders: Folder[]; onClose: () => void }
       )}
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <span className="text-[11px] text-[var(--dim)]">⌘↵ to create</span>
+        <span className="text-[11px] text-[var(--dim)]">ctrl/cmd+enter to create</span>
         <div className="flex gap-2">
           <button
             onClick={onClose}
             className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)]"
           >
-            Cancel
+            cancel
           </button>
           <button
             onClick={() => createMutation.mutate()}
             disabled={!name.trim() || createMutation.isPending}
             className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-[12px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
           >
-            {createMutation.isPending ? 'Creating…' : 'Create folder'}
+            {createMutation.isPending ? 'creating...' : 'create folder'}
           </button>
         </div>
       </div>
@@ -196,25 +197,25 @@ function FolderRow({ folder, folders }: { folder: Folder; folders: Folder[] }) {
       </div>
 
       {editing && (
-        <div className="border-t border-[var(--border)] px-3 pb-3 pt-3 space-y-3">
+        <div className="space-y-3 border-t border-[var(--border)] px-3 pb-3 pt-3">
           <input
             autoFocus
             value={name}
             onChange={e => setName(e.target.value)}
             className={inputCls}
-            placeholder="Folder name"
+            placeholder="folder name"
           />
           <ColorSwatches value={color} onChange={setColor} />
           <div>
             <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">
-              Parent folder <span className="text-[var(--dim)]">(optional)</span>
+              parent folder <span className="text-[var(--dim)]">(optional)</span>
             </div>
             <select
               value={parentFolderId}
               onChange={e => setParentFolderId(e.target.value)}
               className={inputCls + ' cursor-pointer'}
             >
-              <option value="">None (top level)</option>
+              <option value="">none (top level)</option>
               {availableParents.map(candidate => (
                 <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
               ))}
@@ -226,7 +227,7 @@ function FolderRow({ folder, folders }: { folder: Folder; folders: Folder[] }) {
               disabled={!isDirty || !name.trim() || updateMutation.isPending}
               className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-[12px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
             >
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
+              {updateMutation.isPending ? 'saving...' : 'save'}
             </button>
           </div>
         </div>
@@ -240,14 +241,14 @@ function ManageTab({ folders, onClose }: { folders: Folder[]; onClose: () => voi
     return (
       <div className="p-5">
         <div className="rounded-lg border border-dashed border-[var(--border)] px-4 py-8 text-center text-[13px] text-[var(--dim)]">
-          No folders yet. Switch to Add to create one.
+          no folders yet. switch to add to create one.
         </div>
       </div>
     )
   }
 
   return (
-      <div className="p-5 space-y-2">
+    <div className="space-y-2 p-5">
       {folders.map(folder => (
         <FolderRow key={folder.id} folder={folder} folders={folders} />
       ))}
@@ -256,7 +257,7 @@ function ManageTab({ folders, onClose }: { folders: Folder[]; onClose: () => voi
           onClick={onClose}
           className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)]"
         >
-          Done
+          done
         </button>
       </div>
     </div>
@@ -288,7 +289,6 @@ export function CreateFolderModal({ onClose }: { onClose: () => void }) {
         style={{ background: '#111520' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header with tabs */}
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5">
           <div className="flex items-end gap-0">
             {(['add', 'manage'] as const).map(t => (
@@ -310,13 +310,10 @@ export function CreateFolderModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--dim)] transition hover:bg-white/6 hover:text-[var(--ink)]"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Fixed-height body so the modal doesn't jump when edit rows expand */}
         <div className="h-[340px] overflow-y-auto">
           {tab === 'add'
             ? <AddTab folders={folders} onClose={onClose} />

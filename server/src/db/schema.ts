@@ -30,7 +30,7 @@ export const jobs = sqliteTable('jobs', {
   parentJobId: text('parent_job_id'),
   folderId: text('folder_id').references(() => folders.id),
   status: text('status', {
-    enum: ['open', 'in-progress', 'blocked', 'in-review', 'done'],
+    enum: ['open', 'in-progress', 'blocked', 'in-review', 'approved', 'done'],
   }).notNull().default('open'),
   agentId: text('agent_id'),
   autoMerge: integer('auto_merge', { mode: 'boolean' }).notNull().default(false),

@@ -90,26 +90,6 @@ async function resolveText(args: ReturnType<typeof parseArgs>, name: string): Pr
   return text
 }
 
-/** Poll /jobs/:id every 3s until status is no longer in-review. Returns { outcome, comment }. */
-async function pollReview(jobId: string, timeoutMs: number): Promise<{ outcome: string; comment?: string }> {
-  const deadline = Date.now() + timeoutMs
-  while (Date.now() < deadline) {
-    await Bun.sleep(3_000)
-    const job = await apiGet<Job>(`/jobs/${jobId}`)
-    if (job.status === 'done') {
-      return { outcome: 'approved' }
-    }
-    if (job.status === 'in-progress') {
-      // Fetch the latest user comment as the changes-requested message
-      const allComments = await apiGet<Comment[]>(`/jobs/${jobId}/comments`)
-      const userComments = allComments.filter(c => c.author === 'user')
-      const latest = userComments.at(-1)
-      return { outcome: 'changes-requested', comment: latest?.body }
-    }
-  }
-  return { outcome: 'timeout' }
-}
-
 export async function jobCommands(subcommand: string, argv: string[]) {
   const args = parseArgs(argv)
 
@@ -365,12 +345,15 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     }, 1000)
 
     try {
-      const reviewResult = await pollReview(updatedJob.id, 1_800_000)
+      const reviewResult = await apiPost<{ outcome: string; comment?: string }>(`/jobs/${updatedJob.id}/await-review`)
       clearInterval(timer)
       process.stdout.write('\n')
 
-      if (reviewResult.outcome === 'approved') {
-        console.log(`  OK  Approved. Job #${updatedJob.refNum} marked done.`)
+      if (reviewResult.outcome === 'lgtm') {
+        console.log(`  OK  LGTM received. Job #${updatedJob.refNum} remains in-review for downstream review work.`)
+      } else if (reviewResult.outcome === 'approved') {
+        const finalState = updatedJob.type === 'impl' ? 'approved' : 'done'
+        console.log(`  OK  Approved. Job #${updatedJob.refNum} moved to ${finalState}.`)
       } else if (reviewResult.outcome === 'changes-requested') {
         console.log('\n  Return changes requested.')
         if (reviewResult.comment) {

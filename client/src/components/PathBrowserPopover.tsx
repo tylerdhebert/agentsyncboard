@@ -1,4 +1,5 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { FileText, Folder } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { RefObject } from 'react'
@@ -16,24 +17,6 @@ type PopoverPosition = {
   left: number
   width: number
   maxHeight: number
-}
-
-function FolderGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <path d="M1.75 4.75h3.3l1.15 1.4h8.05v5.85a1.25 1.25 0 0 1-1.25 1.25H3A1.25 1.25 0 0 1 1.75 12Z" />
-      <path d="M1.75 5.25V4A1.25 1.25 0 0 1 3 2.75h2.55c.38 0 .74.17.98.46l.72.89h4.5A1.25 1.25 0 0 1 13 5.35V6.1" />
-    </svg>
-  )
-}
-
-function FileGlyph() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.4">
-      <path d="M4 2.75h5l3 3V12A1.25 1.25 0 0 1 10.75 13.25h-6.5A1.25 1.25 0 0 1 3 12V4A1.25 1.25 0 0 1 4.25 2.75Z" />
-      <path d="M9 2.75V6h3" />
-    </svg>
-  )
 }
 
 type PathBrowserPopoverProps = {
@@ -133,7 +116,7 @@ export function PathBrowserPopover({
     >
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-3 py-2.5">
         <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[var(--muted)]">
-          {data?.path ?? browsing ?? 'Loading...'}
+          {data?.path ?? browsing ?? 'loading...'}
         </span>
         {isFetching && <span className="flex-shrink-0 text-[10px] text-[var(--dim)]">syncing</span>}
         <button
@@ -147,7 +130,7 @@ export function PathBrowserPopover({
 
       <div className="overflow-y-auto py-1" style={{ maxHeight: position.maxHeight }}>
         {!data ? (
-          <div className="px-3 py-4 text-[12px] text-[var(--dim)]">Loading...</div>
+          <div className="px-3 py-4 text-[12px] text-[var(--dim)]">loading...</div>
         ) : (
           <>
             {data.parent && (
@@ -157,19 +140,19 @@ export function PathBrowserPopover({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[var(--dim)] transition hover:bg-white/[0.04] hover:text-[var(--ink)]"
               >
                 <span className="w-4 text-center font-mono text-[11px]">..</span>
-                <span className="font-mono">Parent directory</span>
+                <span className="font-mono">parent directory</span>
               </button>
             )}
 
             {data.entries.length === 0 && (
               <div className="px-3 py-4 text-[12px] text-[var(--dim)]">
-                {selectFiles ? 'No files or subdirectories' : 'No subdirectories'}
+                {selectFiles ? 'no files or subdirectories' : 'no subdirectories'}
               </div>
             )}
 
             {data.entries.map(entry => {
               const entryPath = `${data.path}${data.sep}${entry.name}`
-              const Icon = entry.isDir ? FolderGlyph : FileGlyph
+              const Icon = entry.isDir ? Folder : FileText
               const handleClick = entry.isDir ? () => setBrowsing(entryPath) : () => onSelect(entryPath)
 
               return (
@@ -180,7 +163,7 @@ export function PathBrowserPopover({
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-[var(--ink)] transition hover:bg-white/[0.04]"
                 >
                   <span className="flex h-4 w-4 items-center justify-center text-[var(--muted)]">
-                    <Icon />
+                    <Icon className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0 flex-1 truncate font-mono">{entry.name}</span>
                 </button>
@@ -200,7 +183,7 @@ export function PathBrowserPopover({
             onClick={onClose}
             className="rounded px-2.5 py-1 text-[11px] text-[var(--dim)] transition hover:bg-white/5 hover:text-[var(--ink)]"
           >
-            Cancel
+            cancel
           </button>
           <button
             type="button"
@@ -209,7 +192,7 @@ export function PathBrowserPopover({
             }}
             className="rounded bg-[var(--accent-strong)] px-2.5 py-1 text-[11px] font-medium text-[#0a0c11] transition hover:opacity-90"
           >
-            Select
+            select
           </button>
         </div>
       </div>

@@ -40,6 +40,22 @@ Commands:
   agentboard build status --job <ref>
 
   agentboard repo list
+
+Statuses:
+  open, in-progress, blocked, in-review, approved, done
+
+Typical transitions:
+  non-impl: open -> in-progress -> in-review -> done
+  impl: open -> in-progress -> in-review -> approved -> done
+
+Notes:
+  blocked and reopen paths can occur from intermediate states.
+  impl jobs only become done after merge.
+  approved is primarily an orchestrator state: review has settled and merge is allowed.
+
+Review notes:
+  Human LGTM happens through the app/API.
+  Impl jobs can remain in-review after LGTM until accepted review work moves them to approved.
 `)
 }
 

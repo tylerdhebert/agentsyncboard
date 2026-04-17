@@ -24,6 +24,7 @@ type DiffResult = { diff: string }
 type RecheckConflictsResult = { hasConflicts: boolean; files?: string[] }
 type DeleteResult = { ok: true }
 type ApproveResult = { ok: true; job: Job }
+type LgtmResult = { ok: true; job: Job }
 type CreateJobBody = {
   type: JobType
   title: string
@@ -99,6 +100,9 @@ type ApiClient = {
     delete: () => EdenResult<DeleteResult>
     approve: {
       post: () => EdenResult<ApproveResult>
+    }
+    lgtm: {
+      post: () => EdenResult<LgtmResult>
     }
     merge: {
       post: () => EdenResult<{ ok: true; job: Job }>

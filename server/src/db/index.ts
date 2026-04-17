@@ -19,6 +19,9 @@ function shouldMigrateJobTypes(tableName: 'jobs' | 'job_type_mandates'): boolean
     .get(tableName)
 
   const sql = row?.sql ?? ''
+  if (tableName === 'jobs') {
+    return !sql.includes("'arch'") || !sql.includes("'convo'") || !sql.includes("'approved'")
+  }
   return !sql.includes("'arch'") || !sql.includes("'convo'")
 }
 
@@ -42,13 +45,14 @@ function rebuildJobsTable(): void {
         parent_job_id TEXT,
         folder_id TEXT REFERENCES folders(id),
         status TEXT NOT NULL DEFAULT 'open'
-          CHECK(status IN ('open','in-progress','blocked','in-review','done')),
+          CHECK(status IN ('open','in-progress','blocked','in-review','approved','done')),
         agent_id TEXT,
         auto_merge INTEGER NOT NULL DEFAULT 0,
         require_review INTEGER NOT NULL DEFAULT 1,
         plan TEXT,
         latest_update TEXT,
         artifact TEXT,
+        scratchpad TEXT,
         handoff_summary TEXT,
         blocked_reason TEXT,
         conflicted_at TEXT,
@@ -62,13 +66,13 @@ function rebuildJobsTable(): void {
       INSERT INTO jobs (
         id, ref_num, type, title, description, repo_id, branch_name, base_branch,
         parent_job_id, folder_id, status, agent_id, auto_merge, require_review,
-        plan, latest_update, artifact, handoff_summary, blocked_reason,
+        plan, latest_update, artifact, scratchpad, handoff_summary, blocked_reason,
         conflicted_at, conflict_details, completed_at, created_at, updated_at
       )
       SELECT
         id, ref_num, type, title, description, repo_id, branch_name, base_branch,
         parent_job_id, folder_id, status, agent_id, auto_merge, require_review,
-        plan, latest_update, artifact, handoff_summary, blocked_reason,
+        plan, latest_update, artifact, scratchpad, handoff_summary, blocked_reason,
         conflicted_at, conflict_details, completed_at, created_at, updated_at
       FROM jobs_old
     `)
@@ -156,7 +160,7 @@ export function initDb(): void {
       parent_job_id TEXT,
       folder_id TEXT REFERENCES folders(id),
       status TEXT NOT NULL DEFAULT 'open'
-        CHECK(status IN ('open','in-progress','blocked','in-review','done')),
+        CHECK(status IN ('open','in-progress','blocked','in-review','approved','done')),
       agent_id TEXT,
       auto_merge INTEGER NOT NULL DEFAULT 0,
       require_review INTEGER NOT NULL DEFAULT 1,

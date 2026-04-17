@@ -4,12 +4,14 @@ import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
 import type { Folder, InputRequest, Job } from '../api/types'
+import { GitMergeConflict, Octagon, TriangleAlert } from 'lucide-react'
 
 const STATUS_ACCENT: Record<Job['status'], string> = {
   open: '#64748b',
   'in-progress': '#f59e0b',
   blocked: '#f87171',
   'in-review': '#a78bfa',
+  approved: '#22c55e',
   done: '#34d399',
 }
 
@@ -18,6 +20,7 @@ const STATUS_TEXT: Record<Job['status'], string> = {
   'in-progress': 'text-amber-400',
   blocked: 'text-rose-400',
   'in-review': 'text-violet-400',
+  approved: 'text-green-400',
   done: 'text-emerald-400',
 }
 
@@ -26,6 +29,7 @@ const STATUS_LABEL: Record<Job['status'], string> = {
   'in-progress': 'running',
   blocked: 'blocked',
   'in-review': 'review',
+  approved: 'approved',
   done: 'done',
 }
 
@@ -144,19 +148,17 @@ function JobRow({
           <div className="flex flex-col items-end gap-0.5">
             {job.status === 'blocked' && (
               <span title="blocked" className="text-rose-400">
-                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-                  <polygon points="3.5,0 6.5,0 10,3.5 10,6.5 6.5,10 3.5,10 0,6.5 0,3.5" />
-                </svg>
+                <Octagon className="h-3 w-3" />
               </span>
             )}
             {hasPendingInput && (
               <span title="waiting for input" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-amber-400/20 font-bold text-[8px] leading-none text-amber-400">
-                !
+                <TriangleAlert className="h-3 w-3" />
               </span>
             )}
             {job.conflictedAt && (
               <span title="merge conflict" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-orange-400/20 font-bold text-[8px] leading-none text-orange-400">
-                ⚡
+                <GitMergeConflict className="h-3 w-3" />
               </span>
             )}
           </div>
@@ -498,7 +500,7 @@ export function JobTree() {
   if (jobs.length === 0 && folders.length === 0) {
     return (
       <div className="px-4 py-8 text-sm text-[var(--muted)]">
-        No jobs yet. Create the first one with <span className="text-[var(--ink)]">+</span>.
+        no jobs yet. create the first one with <span className="text-[var(--ink)]">+</span>.
       </div>
     )
   }

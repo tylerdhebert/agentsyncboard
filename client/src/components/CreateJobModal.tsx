@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
+import { X } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
-import type { Job, Repo } from '../api/types'
+import type { Repo } from '../api/types'
 
 type JobType = 'goal' | 'plan' | 'review' | 'analysis' | 'arch' | 'convo' | 'impl'
 
 const JOB_TYPES: { id: JobType; label: string; description: string; color: string }[] = [
-  { id: 'goal', label: 'Goal', description: 'High-level objective', color: 'border-sky-400/30 bg-sky-400/8 text-sky-300' },
-  { id: 'plan', label: 'Plan', description: 'Planning & design work', color: 'border-violet-400/30 bg-violet-400/8 text-violet-300' },
-  { id: 'review', label: 'Review', description: 'Code or artifact review', color: 'border-fuchsia-400/30 bg-fuchsia-400/8 text-fuchsia-300' },
-  { id: 'analysis', label: 'Analysis', description: 'Research & investigation', color: 'border-slate-400/30 bg-slate-400/8 text-slate-300' },
-  { id: 'arch', label: 'Arch', description: 'Architecture and system design', color: 'border-cyan-400/30 bg-cyan-400/8 text-cyan-300' },
-  { id: 'convo', label: 'Convo', description: 'Conversation, discovery, or alignment', color: 'border-orange-400/30 bg-orange-400/8 text-orange-300' },
-  { id: 'impl', label: 'Impl', description: 'Implementation with worktree', color: 'border-emerald-400/30 bg-emerald-400/8 text-emerald-300' },
+  { id: 'goal', label: 'goal', description: 'high-level objective', color: 'border-sky-400/30 bg-sky-400/8 text-sky-300' },
+  { id: 'plan', label: 'plan', description: 'planning and design work', color: 'border-violet-400/30 bg-violet-400/8 text-violet-300' },
+  { id: 'review', label: 'review', description: 'code or artifact review', color: 'border-fuchsia-400/30 bg-fuchsia-400/8 text-fuchsia-300' },
+  { id: 'analysis', label: 'analysis', description: 'research and investigation', color: 'border-slate-400/30 bg-slate-400/8 text-slate-300' },
+  { id: 'arch', label: 'arch', description: 'architecture and system design', color: 'border-cyan-400/30 bg-cyan-400/8 text-cyan-300' },
+  { id: 'convo', label: 'convo', description: 'conversation, discovery, or alignment', color: 'border-orange-400/30 bg-orange-400/8 text-orange-300' },
+  { id: 'impl', label: 'impl', description: 'implementation with worktree', color: 'border-emerald-400/30 bg-emerald-400/8 text-emerald-300' },
 ]
 
 const inputCls =
@@ -44,7 +45,6 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
     queryFn: () => unwrap(api.repos.get()),
   })
 
-  // Auto-fill branch name from title
   useEffect(() => {
     if (type === 'impl') {
       setBranchName(`agent/${slugify(title)}`)
@@ -53,13 +53,11 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
     }
   }, [title, type])
 
-  // Auto-fill base branch when repo is selected
   useEffect(() => {
     const repo = repos.find(r => r.id === repoId)
     if (repo) setBaseBranch(repo.baseBranch)
   }, [repoId, repos])
 
-  // Default to first repo
   useEffect(() => {
     if ((type === 'impl' || type === 'goal') && !repoId && repos.length > 0) {
       setRepoId(repos[0].id)
@@ -126,36 +124,30 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
         style={{ background: '#111520' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] px-5 py-4">
-          <h2 className="text-[15px] font-semibold text-[var(--ink)]">New job</h2>
+          <h2 className="text-[15px] font-semibold text-[var(--ink)]">new job</h2>
           <button
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-md text-[var(--dim)] transition hover:bg-white/6 hover:text-[var(--ink)]"
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
-              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
-            </svg>
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-5">
-          {/* Title */}
           <div className="mb-4">
-            <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Title</div>
+            <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">title</div>
             <input
               autoFocus
               value={title}
               onChange={e => setTitle(e.target.value)}
               className={inputCls}
-              placeholder="What needs to be done?"
+              placeholder="what needs to be done?"
             />
           </div>
 
-          {/* Type selector */}
           <div className="mb-4">
-            <div className="mb-2 text-[11px] font-medium text-[var(--muted)]">Type</div>
+            <div className="mb-2 text-[11px] font-medium text-[var(--muted)]">type</div>
             <div className="grid grid-cols-3 gap-1.5">
               {JOB_TYPES.map(t => (
                 <button
@@ -177,20 +169,19 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
             </p>
           </div>
 
-          {/* Goal optional repo+branch */}
           {type === 'goal' && (
             <div className="mb-4 space-y-3 rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] p-3">
               <div className="text-[11px] text-[var(--dim)]">
-                Optional: attach a repo to create an integration branch when this goal is claimed.
+                optional: attach a repo to create an integration branch when this goal is claimed.
               </div>
               <div>
-                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Repository</div>
+                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">repository</div>
                 <select
                   value={repoId}
                   onChange={e => setRepoId(e.target.value)}
                   className={inputCls + ' cursor-pointer'}
                 >
-                  <option value="">None</option>
+                  <option value="">none</option>
                   {repos.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
@@ -198,7 +189,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
               </div>
               {repoId && (
                 <div>
-                  <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Integration branch</div>
+                  <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">integration branch</div>
                   <input
                     value={branchName}
                     onChange={e => setBranchName(e.target.value)}
@@ -210,14 +201,13 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {/* Impl-only fields */}
           {type === 'impl' && (
             <div className="mb-4 space-y-3 rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] p-3">
               <div>
-                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Repository</div>
+                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">repository</div>
                 {repos.length === 0 ? (
                   <div className="text-[12px] text-rose-400">
-                    No repos configured. Add one in Settings first.
+                    no repos configured. add one in settings first.
                   </div>
                 ) : (
                   <select
@@ -232,7 +222,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
                 )}
               </div>
               <div>
-                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Branch name</div>
+                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">branch name</div>
                 <input
                   value={branchName}
                   onChange={e => setBranchName(e.target.value)}
@@ -241,7 +231,7 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
               <div>
-                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">Base branch</div>
+                <div className="mb-1 text-[11px] font-medium text-[var(--muted)]">base branch</div>
                 <input
                   value={baseBranch}
                   onChange={e => setBaseBranch(e.target.value)}
@@ -252,22 +242,21 @@ export function CreateJobModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[11px] text-[var(--dim)]">⌘↵ to create</span>
+            <span className="text-[11px] text-[var(--dim)]">ctrl/cmd+enter to create</span>
             <div className="flex gap-2">
               <button
                 onClick={onClose}
                 className="rounded-md border border-[var(--border)] px-3 py-1.5 text-[12px] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)]"
               >
-                Cancel
+                cancel
               </button>
               <button
                 onClick={() => createMutation.mutate()}
                 disabled={!canSubmit || createMutation.isPending}
                 className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-[12px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
               >
-                {createMutation.isPending ? 'Creating…' : 'Create job'}
+                {createMutation.isPending ? 'creating...' : 'create job'}
               </button>
             </div>
           </div>

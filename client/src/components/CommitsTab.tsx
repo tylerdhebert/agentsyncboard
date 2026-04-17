@@ -25,11 +25,11 @@ export function CommitsTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'type
       <div className="space-y-3">
         {isLoading ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-            Loading commits...
+            loading commits...
           </div>
         ) : (data?.commits?.length ?? 0) === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-            No commits yet on this branch.
+            no commits yet on this branch.
           </div>
         ) : (
           data?.commits.map(commit => (

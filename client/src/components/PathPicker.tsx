@@ -4,7 +4,7 @@ import { PathBrowserPopover } from './PathBrowserPopover'
 export function PathPicker({
   value,
   onChange,
-  placeholder = 'Select a directory...',
+  placeholder = 'select a directory...',
   selectFiles = false,
 }: {
   value: string
@@ -44,9 +44,9 @@ export function PathPicker({
           type="button"
           onClick={openBrowser}
           className="flex-shrink-0 rounded-md border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-[12px] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--ink)]"
-          title="Browse filesystem"
+          title="browse filesystem"
         >
-          Browse
+          browse
         </button>
       </div>
 

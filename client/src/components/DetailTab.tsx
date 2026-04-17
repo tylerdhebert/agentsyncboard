@@ -5,6 +5,7 @@ import { queryKeys } from '../api/keys'
 import type { Comment, Job, JobDependency, JobReference, Repo } from '../api/types'
 import { CommentThread } from './CommentThread'
 import { PathPicker } from './PathPicker'
+import { Merge } from 'lucide-react'
 
 function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
@@ -33,7 +34,7 @@ function ArtifactField({ job }: { job: Job }) {
       await unwrap(api.jobs({ id: job.id }).patch({ artifact: draft }))
       await unwrap(api.jobs({ id: job.id }).comments.post({
         author: 'user',
-        body: `Human edited artifact at ${new Date().toISOString()}`,
+        body: `human edited artifact at ${new Date().toISOString()}`,
       }))
     },
     onSuccess: async () => {
@@ -75,7 +76,7 @@ function ArtifactField({ job }: { job: Job }) {
               disabled={saveMutation.isPending}
               className="rounded border border-[rgba(125,211,252,0.32)] bg-[rgba(56,189,248,0.18)] px-3 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.24)] disabled:opacity-50"
             >
-              Save
+              save
             </button>
             <button
               onClick={() => {
@@ -84,7 +85,7 @@ function ArtifactField({ job }: { job: Job }) {
               }}
               className="rounded border border-[var(--border)] bg-white/5 px-3 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--ink)]"
             >
-              Cancel
+              cancel
             </button>
           </div>
         </div>
@@ -103,11 +104,12 @@ function ReviewActions({ job }: { job: Job }) {
   const queryClient = useQueryClient()
   const [feedback, setFeedback] = useState('')
 
-  const approveMutation = useMutation({
-    mutationFn: () => unwrap(api.jobs({ id: job.id }).approve.post()),
+  const lgtmMutation = useMutation({
+    mutationFn: () => unwrap(api.jobs({ id: job.id }).lgtm.post()),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
       await queryClient.invalidateQueries({ queryKey: queryKeys.job(job.id) })
+      await queryClient.invalidateQueries({ queryKey: queryKeys.comments(job.id) })
     },
   })
 
@@ -122,41 +124,59 @@ function ReviewActions({ job }: { job: Job }) {
     },
   })
 
-  if (job.type === 'impl' || job.status !== 'in-review' || !job.requireReview) return null
+  if (job.status !== 'in-review' || !job.requireReview) return null
+
+  const heading = job.type === 'review' ? 'review signoff' : 'human review'
+  const sublabel = job.type === 'impl'
+    ? 'record lgtm or send the impl back'
+    : job.type === 'review'
+      ? 'accept the review or request changes'
+      : 'lgtm or request changes'
+  const helperText = job.type === 'impl'
+    ? 'lgtm records your signoff and ends the impl agent turn. the impl job stays in review until the accepted review outcome moves it forward.'
+    : job.type === 'review'
+      ? 'lgtm accepts this review pass and applies its verdict to the parent impl job.'
+      : null
 
   return (
     <section className="space-y-3 rounded-lg border border-[rgba(125,211,252,0.16)] bg-[rgba(56,189,248,0.06)] p-4">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-xs font-medium uppercase tracking-wider text-[rgba(125,211,252,0.9)]">
-          human review
+          {heading}
         </h3>
         <span className="text-[10px] uppercase tracking-wider text-[var(--muted)]">
-          approve or request changes
+          {sublabel}
         </span>
       </div>
+
+      {helperText && (
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          {helperText}
+        </p>
+      )}
 
       <textarea
         value={feedback}
         onChange={event => setFeedback(event.target.value)}
-        placeholder="Optional note for Request Changes..."
+        placeholder="optional note for request changes..."
         rows={3}
         className="w-full rounded-lg border border-[var(--border)] bg-[rgba(5,8,12,0.72)] px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
       />
 
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => approveMutation.mutate()}
-          disabled={approveMutation.isPending}
+          onClick={() => lgtmMutation.mutate()}
+          disabled={lgtmMutation.isPending}
           className="rounded border border-[rgba(74,222,128,0.32)] bg-[rgba(74,222,128,0.12)] px-4 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(74,222,128,0.2)] disabled:opacity-50"
         >
-          Approve
+          lgtm
         </button>
         <button
           onClick={() => changesMutation.mutate()}
           disabled={changesMutation.isPending}
           className="rounded border border-[var(--border)] bg-white/5 px-4 py-1.5 text-xs text-[var(--muted)] transition hover:text-[var(--ink)] disabled:opacity-50"
         >
-          Request changes
+          request changes
         </button>
       </div>
     </section>
@@ -277,18 +297,18 @@ export function DetailTab({ job }: { job: Job }) {
     <div className="h-full grid gap-0 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="min-h-0 overflow-y-auto p-5 lg:p-6">
         <div className="space-y-5">
-          <Field label="Description" value={job.description} />
-          <Field label="Plan" value={job.plan} />
-          <Field label="Latest update" value={job.latestUpdate} />
-          <Field label="Handoff summary" value={job.handoffSummary} />
-          {job.blockedReason && <Field label="Blocked reason" value={job.blockedReason} />}
+          <Field label="description" value={job.description} />
+          <Field label="plan" value={job.plan} />
+          <Field label="latest update" value={job.latestUpdate} />
+          <Field label="handoff summary" value={job.handoffSummary} />
+          {job.blockedReason && <Field label="blocked reason" value={job.blockedReason} />}
 
           <ArtifactField job={job} />
           <ReviewActions job={job} />
 
           {job.type === 'impl' && job.status === 'in-review' && (
             <div className="rounded-lg border border-[rgba(245,185,76,0.18)] bg-[rgba(245,185,76,0.08)] px-4 py-3 text-sm text-[var(--warn)]">
-              Implementation jobs are reviewed through the worktree flow. Use the build tab and CLI approval path to finish the turn.
+              implementation jobs stay in review until an accepted review pass moves them to <code>approved</code> or back to <code>in-progress</code>.
             </div>
           )}
 
@@ -296,7 +316,7 @@ export function DetailTab({ job }: { job: Job }) {
             <section className="space-y-2 rounded-lg border border-[rgba(245,185,76,0.24)] bg-[rgba(245,185,76,0.08)] p-4">
               <div className="text-xs font-medium uppercase tracking-wider text-[var(--warn)]">conflict</div>
               <div className="text-sm text-[var(--ink)]">
-                Conflicts were detected. Re-run the recheck after resolving the worktree.
+                conflicts were detected. re-run the recheck after resolving the worktree.
               </div>
               {conflictDetails?.files?.length ? (
                 <div className="font-mono text-xs text-[var(--warn)]">
@@ -312,12 +332,12 @@ export function DetailTab({ job }: { job: Job }) {
 
       <aside className="min-h-0 overflow-y-auto border-l border-[var(--border)] bg-[rgba(4,6,10,0.72)] p-4">
         <div className="space-y-4">
-          <MetaLine label="Branch" value={job.branchName} />
-          <MetaLine label="Base branch" value={job.baseBranch} />
-          <MetaLine label="Repo" value={repo ? `${repo.name}\n${repo.path}` : job.repoId} />
-          <MetaLine label="Parent job" value={parentJob ? `#${parentJob.refNum} ${parentJob.title}` : job.parentJobId} />
-          <MetaLine label="Created" value={new Date(job.createdAt).toLocaleString()} />
-          <MetaLine label="Updated" value={new Date(job.updatedAt).toLocaleString()} />
+          <MetaLine label="branch" value={job.branchName} />
+          <MetaLine label="base branch" value={job.baseBranch} />
+          <MetaLine label="repo" value={repo ? `${repo.name}\n${repo.path}` : job.repoId} />
+          <MetaLine label="parent job" value={parentJob ? `#${parentJob.refNum} ${parentJob.title}` : job.parentJobId} />
+          <MetaLine label="created" value={new Date(job.createdAt).toLocaleString()} />
+          <MetaLine label="updated" value={new Date(job.updatedAt).toLocaleString()} />
         </div>
 
         {job.type === 'impl' && (
@@ -327,21 +347,16 @@ export function DetailTab({ job }: { job: Job }) {
               disabled={runBuildMutation.isPending}
               className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-[var(--muted)] transition hover:bg-white/5 hover:text-[var(--ink)] disabled:opacity-50"
             >
-              <span>▶</span> Run build
+              <span>▶</span> run build
             </button>
             {job.repoId && (
               <button
                 onClick={() => mergeMutation.mutate()}
-                disabled={mergeMutation.isPending || mergeMutation.isSuccess || job.status !== 'done'}
+                disabled={mergeMutation.isPending || mergeMutation.isSuccess || job.status !== 'approved'}
                 className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-[var(--muted)] transition hover:bg-white/5 hover:text-[var(--ink)] disabled:opacity-50"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 2v6h-6" />
-                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-                  <path d="M3 22v-6h6" />
-                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                </svg>
-                {mergeMutation.isPending ? 'Merging…' : mergeMutation.isSuccess ? 'Merged' : 'Merge branch'}
+                <Merge className="h-3.5 w-3.5 flex-shrink-0" />
+                {mergeMutation.isPending ? 'merging…' : mergeMutation.isSuccess ? 'merged' : 'merge branch'}
               </button>
             )}
             {mergeMutation.isError && (
@@ -355,7 +370,7 @@ export function DetailTab({ job }: { job: Job }) {
                 disabled={recheckMutation.isPending}
                 className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-amber-400 transition hover:bg-amber-500/8 disabled:opacity-50"
               >
-                <span>⟳</span> Recheck conflicts
+                <span>⟳</span> recheck conflicts
               </button>
             )}
           </div>
@@ -413,7 +428,7 @@ export function DetailTab({ job }: { job: Job }) {
                   onChange={e => setRefJobInput(e.target.value)}
                   className="w-full rounded border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-[12px] text-[var(--ink)] outline-none"
                 >
-                  <option value="">Select a job…</option>
+                  <option value="">select a job…</option>
                   {allJobs
                     .filter(j => j.id !== job.id && !refs.some(r => r.targetJobId === j.id))
                     .map(j => (
@@ -432,7 +447,7 @@ export function DetailTab({ job }: { job: Job }) {
               <input
                 value={refLabel}
                 onChange={e => setRefLabel(e.target.value)}
-                placeholder="Label (optional)"
+                placeholder="label (optional)"
                 className="w-full rounded border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-[12px] text-[var(--ink)] outline-none placeholder:text-[var(--dim)]"
               />
 
@@ -441,7 +456,7 @@ export function DetailTab({ job }: { job: Job }) {
                 disabled={addRefMutation.isPending || (refType === 'job' ? !refJobInput : !refFileInput)}
                 className="w-full rounded bg-[var(--accent-strong)] py-1.5 text-[11px] font-medium text-[#0a0c11] transition hover:opacity-90 disabled:opacity-40"
               >
-                Add reference
+                add reference
               </button>
             </div>
           )}
@@ -477,7 +492,7 @@ export function DetailTab({ job }: { job: Job }) {
           )}
 
           {refs.length === 0 && !addingRef && (
-            <div className="text-[11px] text-[var(--dim)]">No references yet.</div>
+            <div className="text-[11px] text-[var(--dim)]">no references yet.</div>
           )}
         </section>
       </aside>

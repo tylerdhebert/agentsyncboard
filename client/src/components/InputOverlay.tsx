@@ -143,7 +143,7 @@ export function InputOverlay() {
         <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-4">
           <div className="flex flex-col">
             <span className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.35em] text-[var(--accent)]">
-              {current.agentId} needs input
+              {`${current.agentId} needs input`.toLowerCase()}
             </span>
             <span className="mt-1 font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
               job #{current.jobId}
@@ -181,7 +181,7 @@ export function InputOverlay() {
                 <span className="block font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[rgba(74,222,128,0.9)]">
                   1 / y
                 </span>
-                <span className="mt-2 block text-lg text-[var(--ink)]">Yes</span>
+                <span className="mt-2 block text-lg text-[var(--ink)]">yes</span>
               </button>
               <button
                 onClick={() => submit('no')}
@@ -191,7 +191,7 @@ export function InputOverlay() {
                 <span className="block font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
                   2 / n
                 </span>
-                <span className="mt-2 block text-lg text-[var(--ink)]">No</span>
+                <span className="mt-2 block text-lg text-[var(--ink)]">no</span>
               </button>
             </div>
           )}
@@ -221,7 +221,7 @@ export function InputOverlay() {
                     <span className="w-5 font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.3em] text-[var(--muted)]">
                       {choices.length + 1}
                     </span>
-                    <span className="text-[0.95rem] text-[var(--muted)]">Other...</span>
+                    <span className="text-[0.95rem] text-[var(--muted)]">other...</span>
                   </button>
 
                   {showFreeText && (
@@ -230,7 +230,7 @@ export function InputOverlay() {
                         autoFocus
                         value={freeTextValue}
                         onChange={event => setFreeTextValue(event.target.value)}
-                        placeholder="Type your answer..."
+                        placeholder="type your answer..."
                         className="min-w-0 flex-1 rounded-2xl border border-[var(--border)] bg-[rgba(5,8,12,0.84)] px-4 py-3 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
                         onKeyDown={event => {
                           if (event.key === 'Enter' && freeTextValue.trim()) {
@@ -244,7 +244,7 @@ export function InputOverlay() {
                         disabled={!freeTextValue.trim() || answerMutation.isPending}
                         className="rounded-2xl border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.16)] px-4 py-3 text-sm text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.22)] disabled:opacity-50"
                       >
-                        Send
+                        send
                       </button>
                     </div>
                   )}
@@ -260,19 +260,19 @@ export function InputOverlay() {
                 value={textAnswer}
                 onChange={event => setTextAnswer(event.target.value)}
                 rows={4}
-                placeholder="Type your answer..."
+                placeholder="type your answer..."
                 className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[rgba(5,8,12,0.84)] px-4 py-3 text-sm leading-relaxed text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
               />
               <div className="flex items-center justify-between gap-3">
                 <span className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.28em] text-[var(--muted)]">
-                  Cmd/Ctrl + Enter to send
+                  cmd/ctrl + enter to send
                 </span>
                 <button
                   onClick={() => submit(textAnswer)}
                   disabled={!textAnswer.trim() || answerMutation.isPending}
                   className="rounded-full border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.16)] px-4 py-2 text-[0.72rem] uppercase tracking-[0.25em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.22)] disabled:opacity-50"
                 >
-                  Send
+                  send
                 </button>
               </div>
             </div>

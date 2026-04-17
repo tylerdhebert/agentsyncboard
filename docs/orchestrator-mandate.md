@@ -67,9 +67,20 @@ agentboard job create \
   --repo <repo-id> \
   --branch agent/jwt-refresh \
   --base feature/my-feature   # the goal's integration branch
+
+# Review job — parent it to the impl job it reviews, not directly to the goal
+agentboard job create \
+  --title "Review JWT refresh" \
+  --type review \
+  --parent 44 \
+  --description "Review impl job #44 for correctness, completeness, and merge readiness."
+
+agentboard ref add --job 46 --job-ref 44 --label "impl job under review"
 ```
 
 `--repo` accepts the repo UUID (visible in the UI settings). `--branch` is the branch the worker will create. `--base` is what it branches from (defaults to the repo's base branch if omitted).
+
+When you create a review job for implementation work, make it a child of the impl job it reviews. The impl job remains the long-lived unit of work. Review jobs are nested underneath it.
 
 Output: `Created job #<refNum>: <title>` — note the refNum, you'll use it for `--parent` filters and refs.
 
@@ -115,16 +126,22 @@ agentboard job list --parent $GOAL --status open
 agentboard job list --parent $GOAL --status in-progress
 agentboard job list --parent $GOAL --status blocked
 agentboard job list --parent $GOAL --status in-review
+agentboard job list --parent $GOAL --status approved
 agentboard job list --parent $GOAL --status done
 
 # Filter by type
 agentboard job list --parent $GOAL --type analysis
 agentboard job list --parent $GOAL --type impl
+
+# Review jobs under a specific impl job
+agentboard job list --parent <impl-ref> --type review
 ```
 
 Output per line: `#<refNum>  <status>  [<type>]  <title>`
 
-Poll until all children are `done` or `in-review`. Both are terminal from your perspective — `in-review` means the human is handling it. Re-check blocked jobs promptly.
+Poll until all direct children are `done`, or are otherwise in a state you are intentionally handing off. Re-check blocked jobs promptly.
+
+An impl job in `in-review` is not automatically terminal from your perspective. First inspect any child review jobs under that impl and make sure the review pass is actually settled before treating the parent impl as complete enough for handoff.
 
 There is no built-in wait command for sub-jobs. Use a loop:
 
@@ -147,13 +164,28 @@ done
 agentboard job context --job <sub-job-ref>
 ```
 
-The artifact field is the worker's deliverable. Use it to inform the next sub-job or to write your synthesis. If a job is `in-review`, it is complete from your perspective — the human reviewer handles approval.
+The artifact field is the worker's deliverable. Use it to inform the next sub-job or to write your synthesis.
+
+If an impl job is `in-review`, also read any child review jobs beneath it. Review jobs are part of the same unit of work, not a separate sibling track.
+
+If a child review job is accepted with an `Approve` verdict, the parent impl moves to `approved`. If the accepted verdict requests changes, the parent impl moves back to `in-progress`. Accepted review jobs should be attached back onto the parent impl as references.
+
+The full set of statuses is `open`, `in-progress`, `blocked`, `in-review`, `approved`, and `done`.
+
+Typical transitions:
+- non-impl: `open -> in-progress -> in-review -> done`
+- impl: `open -> in-progress -> in-review -> approved -> done`
+
+Notes:
+- `blocked` and reopen paths can occur from intermediate states.
+- impl jobs only become `done` after merge.
+- `approved` is primarily an orchestrator state: review has settled, the impl job is mergeable, and no more review work is pending on that card.
 
 ---
 
 ## Step 6 — Synthesize and finish
 
-Once all sub-jobs are `done` or `in-review`:
+Once all sub-jobs are in a truthful handoff state and any nested review work has been accounted for:
 
 ```bash
 agentboard job artifact --job $GOAL --agent $AGENT_ID \
@@ -164,7 +196,7 @@ Completed X, Y, Z. Key decisions: ..."
 agentboard job ready --job $GOAL
 ```
 
-`job ready` marks the goal `in-review`. Always call it — do not just stop. If `requireReview` is set on the goal, `ready` blocks until a human approves or requests changes — same behavior as impl jobs.
+`job ready` marks the goal `in-review`. Always call it — do not just stop. If `requireReview` is set on the goal, `ready` blocks until a human `LGTM` or requests changes. For impl jobs, human `LGTM` can leave the job in `in-review` while downstream child review work continues.
 
 ---
 

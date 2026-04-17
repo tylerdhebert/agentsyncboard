@@ -171,11 +171,11 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-5">
           {isLoading ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-              Loading diff...
+              loading diff...
             </div>
           ) : blocks.length === 0 ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-              No changes.
+              no changes.
             </div>
           ) : (
             <div className="space-y-4">

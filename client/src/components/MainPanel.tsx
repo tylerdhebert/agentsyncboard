@@ -11,10 +11,10 @@ import { CommitsTab } from './CommitsTab'
 import { BuildTab } from './BuildTab'
 
 const TABS: { id: ActiveTab; label: string }[] = [
-  { id: 'detail', label: 'Detail' },
-  { id: 'diff', label: 'Diff' },
-  { id: 'commits', label: 'Commits' },
-  { id: 'build', label: 'Build' },
+  { id: 'detail', label: 'detail' },
+  { id: 'diff', label: 'diff' },
+  { id: 'commits', label: 'commits' },
+  { id: 'build', label: 'build' },
 ]
 
 export function MainPanel() {
@@ -54,16 +54,27 @@ export function MainPanel() {
     },
   })
 
+  const approveMutation = useMutation({
+    mutationFn: () =>
+      unwrap(api.jobs({ id: selectedJobId! }).approve.post()),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.jobs })
+      if (selectedJobId) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.job(selectedJobId) })
+      }
+    },
+  })
+
   if (!selectedJobId) {
     return (
       <div className="flex h-full items-center justify-center px-8">
         <div className="max-w-xl text-center">
           <div className="text-xs uppercase tracking-[0.4em] text-[var(--muted)]">no job selected</div>
           <h2 className="mt-3 text-2xl font-semibold text-[var(--ink)]">
-            Pick a job from the tree or create a new one.
+            pick a job from the tree or create a new one.
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">
-            The right side becomes the job workspace once a row is selected.
+            the right side becomes the job workspace once a row is selected.
           </p>
         </div>
       </div>
@@ -73,7 +84,7 @@ export function MainPanel() {
   if (isPending || !job) {
     return (
       <div className="flex h-full items-center justify-center px-8">
-        <div className="text-sm text-[var(--muted)]">Loading job...</div>
+        <div className="text-sm text-[var(--muted)]">loading job...</div>
       </div>
     )
   }
@@ -83,7 +94,10 @@ export function MainPanel() {
       <JobHeader
         job={job}
         onToggle={(field, value) => toggleMutation.mutate({ field, value })}
+        onApprove={() => approveMutation.mutate()}
         onDelete={() => deleteMutation.mutate()}
+        approveDisabled={approveMutation.isPending || job.status !== 'in-review'}
+        deleteDisabled={deleteMutation.isPending}
       />
 
       <div

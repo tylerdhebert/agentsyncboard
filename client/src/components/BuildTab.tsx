@@ -61,11 +61,11 @@ export function BuildTab({ job }: { job: Pick<Job, 'id' | 'type' | 'branchName'>
       <div className="min-h-0 flex-1 overflow-y-auto p-5">
         {isLoading ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-            Loading build results...
+            loading build results...
           </div>
         ) : !build ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
-            No build results yet.
+            no build results yet.
           </div>
         ) : (
           <pre className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[rgba(5,8,12,0.84)] p-4 font-[var(--font-mono)] text-[0.76rem] leading-relaxed text-[var(--ink)]">

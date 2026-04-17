@@ -62,6 +62,7 @@ export function useWebSocket() {
             const jobId = readJobId(message.data)
             if (jobId) {
               queryClient.invalidateQueries({ queryKey: queryKeys.job(jobId) })
+              queryClient.invalidateQueries({ queryKey: queryKeys.refs(jobId) })
             }
             if (message.event === 'job:updated') {
               const data = message.data as { status?: string; title?: string }

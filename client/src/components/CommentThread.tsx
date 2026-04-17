@@ -85,7 +85,7 @@ function ConvoInputCard({
                   className="flex w-full items-center gap-3 rounded-lg border border-dashed border-[var(--border-strong)] bg-[rgba(255,255,255,0.02)] px-3 py-2 text-left transition hover:bg-white/4 disabled:opacity-50"
                 >
                   <span className="w-4 text-[11px] text-[var(--muted)]">{choices.length + 1}</span>
-                  <span className="text-[13px] text-[var(--muted)]">Other…</span>
+                  <span className="text-[13px] text-[var(--muted)]">other…</span>
                 </button>
                 {showFreeText && (
                   <div className="flex gap-2">
@@ -99,7 +99,7 @@ function ConvoInputCard({
                           onAnswer(freeTextValue.trim())
                         }
                       }}
-                      placeholder="Type your answer…"
+                      placeholder="type your answer…"
                       className="min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[rgba(5,8,12,0.84)] px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
                     />
                     <button
@@ -107,7 +107,7 @@ function ConvoInputCard({
                       disabled={!freeTextValue.trim() || isPending}
                       className="rounded-lg border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.16)] px-3 py-2 text-sm text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.22)] disabled:opacity-50"
                     >
-                      Send
+                      send
                     </button>
                   </div>
                 )}
@@ -129,17 +129,17 @@ function ConvoInputCard({
                 }
               }}
               rows={3}
-              placeholder="Type your reply..."
+              placeholder="type your reply..."
               className="w-full resize-none rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
             />
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[10px] text-[var(--dim)]">Cmd/Ctrl+Enter to send</span>
+              <span className="text-[10px] text-[var(--dim)]">cmd/ctrl+enter to send</span>
               <button
                 onClick={() => textValue.trim() && onAnswer(textValue.trim())}
                 disabled={!textValue.trim() || isPending}
                 className="rounded border border-[rgba(125,211,252,0.32)] bg-[rgba(56,189,248,0.18)] px-3 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.24)] disabled:opacity-50"
               >
-                Send
+                send
               </button>
             </div>
           </div>
@@ -218,7 +218,7 @@ export function CommentThread({ jobId, jobType }: { jobId: string; jobType: stri
       </div>
 
       {comments.length === 0 ? (
-        <div className="py-4 text-sm text-[var(--muted)]">No comments yet.</div>
+        <div className="py-4 text-sm text-[var(--muted)]">no comments yet.</div>
       ) : (
         <div className="relative space-y-4 pl-4">
           {comments.length > 1 && (
@@ -263,7 +263,7 @@ export function CommentThread({ jobId, jobType }: { jobId: string; jobType: stri
                 postMutation.mutate(text.trim())
               }
             }}
-            placeholder="Leave a note. Cmd/Ctrl+Enter sends."
+            placeholder="leave a note. cmd/ctrl+enter sends."
             rows={3}
             className="w-full resize-none rounded-lg border border-[var(--border)] bg-transparent px-3 py-2 text-sm text-[var(--ink)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--border-strong)]"
           />
@@ -273,7 +273,7 @@ export function CommentThread({ jobId, jobType }: { jobId: string; jobType: stri
               disabled={!text.trim() || postMutation.isPending}
               className="rounded border border-[rgba(125,211,252,0.32)] bg-[rgba(56,189,248,0.18)] px-3 py-1.5 text-xs text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.24)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Send
+              send
             </button>
           </div>
         </div>

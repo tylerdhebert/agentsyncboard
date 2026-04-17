@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { and, eq, sql } from 'drizzle-orm'
 import { db } from '../db'
-import { jobs, comments, jobDependencies, repos } from '../db/schema'
+import { jobs, comments, jobDependencies, jobReferences, repos } from '../db/schema'
 import { wsManager } from '../wsManager'
 import { pollRegistry } from '../pollRegistry'
 import { randomId } from '../lib/ids'
@@ -25,6 +25,7 @@ const jobStatusSchema = t.Union([
   t.Literal('in-progress'),
   t.Literal('blocked'),
   t.Literal('in-review'),
+  t.Literal('approved'),
   t.Literal('done'),
 ])
 
@@ -41,6 +42,112 @@ function nextRefNum(): number {
 
 function resolveBaseBranch(job: { baseBranch?: string | null }, repo: Repo): string {
   return job.baseBranch ?? repo.baseBranch
+}
+
+type ReviewVerdict = 'approve' | 'request-changes'
+
+function parseReviewVerdict(artifact: string | null): ReviewVerdict | null {
+  if (!artifact) return null
+  const normalized = artifact.toLowerCase()
+  const verdictSection = normalized.match(/## verdict\s+([\s\S]*?)(?:\n## |\s*$)/)
+  const verdictText = verdictSection?.[1] ?? normalized
+  if (verdictText.includes('request changes') || verdictText.includes('blocking issue')) {
+    return 'request-changes'
+  }
+  if (verdictText.includes('approve')) {
+    return 'approve'
+  }
+  return null
+}
+
+async function addUserComment(jobId: string, body: string) {
+  const comment = {
+    id: randomId(),
+    jobId,
+    author: 'user' as const,
+    body,
+    createdAt: now(),
+  }
+  await db.insert(comments).values(comment)
+  const saved = db.select().from(comments).where(eq(comments.id, comment.id)).get()!
+  wsManager.broadcast('comment:created', saved)
+  return saved
+}
+
+async function refreshSiblingConflicts(job: typeof jobs.$inferSelect) {
+  const repo = job.repoId ? loadRepo(job.repoId) : null
+  const resolvedBaseBranch = job.repoId ? resolveBaseBranch(job, repo!) : null
+  if (!repo || !resolvedBaseBranch) return
+
+  const siblings = db.select().from(jobs)
+    .where(
+      and(
+        eq(jobs.repoId, repo.id),
+        eq(jobs.baseBranch, resolvedBaseBranch),
+        eq(jobs.type, 'impl'),
+      )
+    ).all()
+    .filter(sibling => sibling.id !== job.id && sibling.status !== 'done')
+
+  for (const sibling of siblings) {
+    if (!sibling.branchName) continue
+    const result = await checkConflicts(repo.path, sibling.branchName, resolvedBaseBranch)
+    if (result.hasConflicts) {
+      const details = JSON.stringify({ output: result.details, files: result.files })
+      await db.update(jobs)
+        .set({ conflictedAt: now(), conflictDetails: details, updatedAt: now() })
+        .where(eq(jobs.id, sibling.id))
+      await addUserComment(
+        sibling.id,
+        `Conflict detected after merge of ${job.branchName}. Affected files: ${result.files.join(', ')}. Resolve in your worktree and re-run agentboard job ready.`
+      )
+      wsManager.broadcast('job:conflicted', { id: sibling.id, files: result.files })
+    } else {
+      await db.update(jobs)
+        .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
+        .where(eq(jobs.id, sibling.id))
+    }
+  }
+}
+
+async function applyAcceptedReviewToParent(reviewJob: typeof jobs.$inferSelect) {
+  if (reviewJob.type !== 'review' || !reviewJob.parentJobId) return
+
+  const parent = db.select().from(jobs).where(eq(jobs.id, reviewJob.parentJobId)).get()
+  if (!parent || parent.type !== 'impl') return
+
+  const verdict = parseReviewVerdict(reviewJob.artifact)
+  if (!verdict) throw new Error('review job artifact must include an approve or request changes verdict')
+
+  if (verdict === 'request-changes') {
+    await db.update(jobs)
+      .set({ status: 'in-progress', completedAt: null, updatedAt: now() })
+      .where(eq(jobs.id, parent.id))
+    await addUserComment(parent.id, `Accepted review #${reviewJob.refNum}: changes requested.`)
+    const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
+    wsManager.broadcast('job:updated', updatedParent)
+    return
+  }
+
+  if (parent.autoMerge && parent.repoId && parent.branchName) {
+    const repo = loadRepo(parent.repoId)
+    const baseBranch = resolveBaseBranch(parent, repo)
+    await mergeBranch(repo.path, parent.branchName, baseBranch)
+    await worktreeRemove(repo.path, parent.branchName)
+    await db.update(jobs)
+      .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, updatedAt: now() })
+      .where(eq(jobs.id, parent.id))
+    const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
+    wsManager.broadcast('job:updated', updatedParent)
+    await refreshSiblingConflicts(updatedParent)
+    return
+  }
+
+  await db.update(jobs)
+    .set({ status: 'approved', completedAt: null, updatedAt: now() })
+    .where(eq(jobs.id, parent.id))
+  const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
+  wsManager.broadcast('job:updated', updatedParent)
 }
 
 export const jobsRoutes = new Elysia({ prefix: '/jobs' })
@@ -229,13 +336,10 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
           .set({ conflictedAt: now(), conflictDetails: details, updatedAt: now() })
           .where(eq(jobs.id, params.id))
 
-        await db.insert(comments).values({
-          id: randomId(),
-          jobId: params.id,
-          author: 'user',
-          body: `Conflict detected against ${baseBranch}. Affected files: ${result.files.join(', ')}. Resolve in your worktree at ${worktreePath(repo.path, job.branchName)} and re-run agentboard job ready.`,
-          createdAt: now(),
-        })
+        await addUserComment(
+          params.id,
+          `Conflict detected against ${baseBranch}. Affected files: ${result.files.join(', ')}. Resolve in your worktree at ${worktreePath(repo.path, job.branchName)} and re-run agentboard job ready.`
+        )
 
         wsManager.broadcast('job:conflicted', { id: params.id, files: result.files })
         return { status: 'conflicted', files: result.files, details: result.details }
@@ -273,6 +377,49 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     }
   })
 
+  .post('/:id/lgtm', async ({ params }) => {
+    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
+    if (!job) throw new Error('not found')
+    if (job.status !== 'in-review') throw new Error('job is not in-review')
+    if (!job.requireReview) throw new Error('job does not require human review')
+
+    await addUserComment(params.id, 'LGTM')
+
+    if (job.type === 'impl') {
+      pollRegistry.resolve(`review:${params.id}`, { outcome: 'lgtm' })
+      return { ok: true as const, job }
+    }
+
+    await db.update(jobs)
+      .set({ status: 'done', completedAt: now(), updatedAt: now() })
+      .where(eq(jobs.id, params.id))
+
+    const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+    wsManager.broadcast('job:updated', updated)
+
+    if (job.type === 'review' && job.parentJobId) {
+      const parent = db.select().from(jobs).where(eq(jobs.id, job.parentJobId)).get()
+      if (parent?.type === 'impl') {
+        await db.insert(jobReferences).values({
+          id: randomId(),
+          jobId: parent.id,
+          type: 'job',
+          targetJobId: updated.id,
+          filePath: null,
+          label: 'accepted review',
+          createdAt: now(),
+        })
+      }
+    }
+
+    if (job.type === 'review') {
+      await applyAcceptedReviewToParent(updated)
+    }
+
+    pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
+    return { ok: true, job: updated }
+  })
+
   .post('/:id/approve', async ({ params }) => {
     const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
     if (!job) throw new Error('not found')
@@ -283,53 +430,31 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       const baseBranch = resolveBaseBranch(job, repo)
       await mergeBranch(repo.path, job.branchName, baseBranch)
       await worktreeRemove(repo.path, job.branchName)
+
+      await db.update(jobs)
+        .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, updatedAt: now() })
+        .where(eq(jobs.id, params.id))
+
+      const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+      wsManager.broadcast('job:updated', updated)
+      pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
+      await refreshSiblingConflicts(updated)
+      return { ok: true, job: updated }
     }
 
+    const nextStatus = job.type === 'impl' ? 'approved' : 'done'
     await db.update(jobs)
-      .set({ status: 'done', completedAt: now(), updatedAt: now() })
+      .set({
+        status: nextStatus,
+        completedAt: nextStatus === 'done' ? now() : null,
+        updatedAt: now(),
+      })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
     wsManager.broadcast('job:updated', updated)
 
     pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
-
-    const repo = job.repoId ? loadRepo(job.repoId) : null
-    const resolvedBaseBranch = job.repoId ? resolveBaseBranch(job, repo!) : null
-    if (repo && resolvedBaseBranch) {
-      const siblings = db.select().from(jobs)
-        .where(
-          and(
-            eq(jobs.repoId, repo.id),
-            eq(jobs.baseBranch, resolvedBaseBranch),
-            eq(jobs.type, 'impl'),
-          )
-        ).all()
-        .filter(sibling => sibling.id !== job.id && sibling.status !== 'done')
-
-      for (const sibling of siblings) {
-        if (!sibling.branchName) continue
-        const result = await checkConflicts(repo.path, sibling.branchName, resolvedBaseBranch)
-        if (result.hasConflicts) {
-          const details = JSON.stringify({ output: result.details, files: result.files })
-          await db.update(jobs)
-            .set({ conflictedAt: now(), conflictDetails: details, updatedAt: now() })
-            .where(eq(jobs.id, sibling.id))
-          await db.insert(comments).values({
-            id: randomId(),
-            jobId: sibling.id,
-            author: 'user',
-            body: `Conflict detected after merge of ${job.branchName}. Affected files: ${result.files.join(', ')}. Resolve in your worktree and re-run agentboard job ready.`,
-            createdAt: now(),
-          })
-          wsManager.broadcast('job:conflicted', { id: sibling.id, files: result.files })
-        } else {
-          await db.update(jobs)
-            .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
-            .where(eq(jobs.id, sibling.id))
-        }
-      }
-    }
 
     return { ok: true, job: updated }
   })
@@ -338,6 +463,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
     if (!job) throw new Error('not found')
     if (job.type !== 'impl') throw new Error('only impl jobs can be merged')
+    if (job.status !== 'approved') throw new Error('job is not approved')
     if (!job.branchName || !job.repoId) throw new Error('job has no branch or repo')
 
     const repo = loadRepo(job.repoId)
@@ -352,39 +478,12 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     await worktreeRemove(repo.path, job.branchName)
 
     await db.update(jobs)
-      .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
+      .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
     wsManager.broadcast('job:updated', updated)
-
-    const siblings = db.select().from(jobs)
-      .where(and(eq(jobs.repoId, repo.id), eq(jobs.type, 'impl')))
-      .all()
-      .filter(s => s.id !== job.id && s.status !== 'done' && !!s.branchName)
-
-    for (const sibling of siblings) {
-      if (!sibling.branchName) continue
-      const result = await checkConflicts(repo.path, sibling.branchName, baseBranch)
-      if (result.hasConflicts) {
-        const details = JSON.stringify({ output: result.details, files: result.files })
-        await db.update(jobs)
-          .set({ conflictedAt: now(), conflictDetails: details, updatedAt: now() })
-          .where(eq(jobs.id, sibling.id))
-        await db.insert(comments).values({
-          id: randomId(),
-          jobId: sibling.id,
-          author: 'user',
-          body: `Conflict detected after merge of ${job.branchName}. Affected files: ${result.files.join(', ')}. Resolve in your worktree and re-run agentboard job ready.`,
-          createdAt: now(),
-        })
-        wsManager.broadcast('job:conflicted', { id: sibling.id, files: result.files })
-      } else {
-        await db.update(jobs)
-          .set({ conflictedAt: null, conflictDetails: null, updatedAt: now() })
-          .where(eq(jobs.id, sibling.id))
-      }
-    }
+    await refreshSiblingConflicts(updated)
 
     return { ok: true as const, job: updated }
   })
@@ -394,15 +493,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     if (!job) throw new Error('not found')
     if (job.status !== 'in-review') throw new Error('job is not in-review')
 
-    if (body.comment) {
-      await db.insert(comments).values({
-        id: randomId(),
-        jobId: params.id,
-        author: 'user',
-        body: body.comment,
-        createdAt: now(),
-      })
-    }
+    if (body.comment) await addUserComment(params.id, body.comment)
 
     await db.update(jobs)
       .set({ status: 'in-progress', updatedAt: now() })

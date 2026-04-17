@@ -13,6 +13,8 @@ agentboard job claim --job <job-ref> --agent <agent-id>
 agentboard job context --job <job-ref>
 ```
 
+Review jobs are children of the job they are reviewing. For impl reviews, your parent job should be the impl job under review, and that impl job should also be attached as a reference.
+
 The subject of the review will be in the references. If no reference is attached, ask before proceeding:
 
 ```bash
@@ -26,6 +28,8 @@ If the referenced job is an impl job, get its worktree path and `cd` there:
 agentboard job worktree --job <impl-job-ref>
 # cd <path printed above>
 ```
+
+The impl job owns the branch and worktree. Your review job does not.
 
 ---
 
@@ -78,6 +82,10 @@ EOF
 agentboard job ready --job <job-ref>
 ```
 
+Your artifact must contain an explicit verdict of `Approve` or `Request Changes`. The system uses that accepted review verdict to either move the parent impl job forward toward merge or send it back to `in-progress`.
+
+If `requireReview` is set on the review job, your work is not accepted until the human leaves `LGTM` on the review job. Once accepted, the completed review job is attached back to the parent impl job as a reference.
+
 ---
 
 ## Rules
@@ -86,4 +94,4 @@ agentboard job ready --job <job-ref>
 2. **Distinguish blocking from non-blocking.** Not every finding should block merge.
 3. **Do not implement fixes.** If you find an issue, document it — don't patch it yourself.
 4. **Post findings as comments while reviewing.** Don't batch everything into the artifact.
-5. **`job ready` is the only way to finish.**
+5. **`job ready` is the only way to hand off your review.**
