@@ -28,6 +28,7 @@ agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job scratch --job <ref> --agent <id> "<text>" [--from-file <path>]
 agentboard job ready --job <ref>
+agentboard job wait --job <ref>         # re-attach to a blocking review after session interruption
 agentboard job reopen --job <ref>
 agentboard job done --job <ref>
 agentboard job worktree --job <ref>
@@ -235,7 +236,10 @@ Completed X, Y, Z. Key decisions: ..."
 agentboard job ready --job <goal-ref>
 ```
 
-`job ready` marks the goal `in-review`. Always call it — do not just stop. If `requireReview` is set, `ready` blocks until a human `LGTM` or requests changes. For impl jobs, human `LGTM` can leave the job in `in-review` while downstream child review work continues.
+`job ready` marks the goal `in-review`. Always call it — do not just stop. If `requireReview` is set, `ready` blocks until a human `LGTM` or requests changes. For impl jobs, human `LGTM` can leave the job in `in-review` while downstream child review work continues. If your session is interrupted while waiting, reattach with:
+```bash
+agentboard job wait --job <goal-ref>
+```
 
 ---
 

@@ -43,6 +43,7 @@ export const jobs = sqliteTable('jobs', {
   blockedReason: text('blocked_reason'),
   conflictedAt: text('conflicted_at'),
   conflictDetails: text('conflict_details'),
+  reviewOutcome: text('review_outcome'),
   completedAt: text('completed_at'),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

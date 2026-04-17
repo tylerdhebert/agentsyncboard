@@ -82,6 +82,11 @@ EOF
 agentboard job ready --job <job-ref>
 ```
 
+If `requireReview` is set on this review job, `ready` blocks until the human approves or requests changes. If your session is interrupted while waiting, reattach with:
+```bash
+agentboard job wait --job <job-ref>
+```
+
 Your artifact must contain an explicit verdict of `Approve` or `Request Changes`. The system uses that accepted review verdict to either move the parent impl job forward toward merge or send it back to `in-progress`.
 
 If `requireReview` is set on the review job, your work is not accepted until the human leaves `LGTM` on the review job. Once accepted, the completed review job is attached back to the parent impl job as a reference.

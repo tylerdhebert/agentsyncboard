@@ -48,6 +48,11 @@ EOF
 agentboard job ready --job <job-ref>
 ```
 
+If `requireReview` is set, `ready` blocks until the human approves or requests changes. If your session is interrupted while waiting, reattach with:
+```bash
+agentboard job wait --job <job-ref>
+```
+
 ---
 
 ## When to Wrap Up

@@ -269,4 +269,7 @@ export function initDb(): void {
   if (!colNames.includes('scratchpad')) {
     sqlite.run('ALTER TABLE jobs ADD COLUMN scratchpad TEXT')
   }
+  if (!colNames.includes('review_outcome')) {
+    sqlite.run('ALTER TABLE jobs ADD COLUMN review_outcome TEXT')
+  }
 }

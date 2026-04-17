@@ -56,6 +56,7 @@ export type Job = {
   blockedReason: string | null
   conflictedAt: string | null
   conflictDetails: string | null
+  reviewOutcome: string | null
   completedAt: string | null
   createdAt: string
   updatedAt: string

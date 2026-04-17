@@ -109,6 +109,12 @@ agentboard job ready --job <job-ref>
 
 `job ready` checks for merge conflicts. If conflicts are detected, resolve them in the worktree and re-run. If `requireReview` is set, `ready` blocks until the human either leaves an `LGTM` or requests changes.
 
+If your session is interrupted while waiting (connection drop, tool timeout, etc.), reattach with:
+```bash
+agentboard job wait --job <job-ref>
+```
+This resumes waiting from wherever review stands — safe to run even if review already completed.
+
 For impl jobs, human `LGTM` is **not** terminal. It records signoff, ends your turn, and can leave the job in `in-review` while downstream child review work happens. An accepted review outcome can then either move the job forward toward merge or send it back to `in-progress`. Only merge makes an impl job `done`.
 
 ---

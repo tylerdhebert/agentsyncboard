@@ -3,7 +3,6 @@ import { and, eq, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { jobs, comments, jobDependencies, jobReferences, repos } from '../db/schema'
 import { wsManager } from '../wsManager'
-import { pollRegistry } from '../pollRegistry'
 import { randomId } from '../lib/ids'
 import { now } from '../lib/time'
 import { assertImplFields } from '../lib/validate'
@@ -121,7 +120,7 @@ async function applyAcceptedReviewToParent(reviewJob: typeof jobs.$inferSelect) 
 
   if (verdict === 'request-changes') {
     await db.update(jobs)
-      .set({ status: 'in-progress', completedAt: null, updatedAt: now() })
+      .set({ status: 'in-progress', completedAt: null, reviewOutcome: 'changes-requested', updatedAt: now() })
       .where(eq(jobs.id, parent.id))
     await addUserComment(parent.id, `Accepted review #${reviewJob.refNum}: changes requested.`)
     const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
@@ -135,7 +134,7 @@ async function applyAcceptedReviewToParent(reviewJob: typeof jobs.$inferSelect) 
     await mergeBranch(repo.path, parent.branchName, baseBranch)
     await worktreeRemove(repo.path, parent.branchName)
     await db.update(jobs)
-      .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, updatedAt: now() })
+      .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, reviewOutcome: 'approved', updatedAt: now() })
       .where(eq(jobs.id, parent.id))
     const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
     wsManager.broadcast('job:updated', updatedParent)
@@ -144,7 +143,7 @@ async function applyAcceptedReviewToParent(reviewJob: typeof jobs.$inferSelect) 
   }
 
   await db.update(jobs)
-    .set({ status: 'approved', completedAt: null, updatedAt: now() })
+    .set({ status: 'approved', completedAt: null, reviewOutcome: 'approved', updatedAt: now() })
     .where(eq(jobs.id, parent.id))
   const updatedParent = db.select().from(jobs).where(eq(jobs.id, parent.id)).get()!
   wsManager.broadcast('job:updated', updatedParent)
@@ -307,7 +306,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     }
 
     await db.update(jobs)
-      .set({ agentId: body.agentId, status: 'in-progress', updatedAt: now() })
+      .set({ agentId: body.agentId, status: 'in-progress', reviewOutcome: null, updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
@@ -360,23 +359,6 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     return { status: 'in-review', job: updated }
   })
 
-  .post('/:id/await-review', async ({ params }) => {
-    const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
-    if (!job) throw new Error('not found')
-    if (job.status !== 'in-review') throw new Error('job is not in-review')
-    if (!job.requireReview) return { outcome: 'approved' }
-
-    try {
-      const result = await pollRegistry.park<{ outcome: string; comment?: string }>(
-        `review:${params.id}`,
-        1_800_000
-      )
-      return result
-    } catch {
-      return { outcome: 'timeout' }
-    }
-  })
-
   .post('/:id/lgtm', async ({ params }) => {
     const job = db.select().from(jobs).where(eq(jobs.id, params.id)).get()
     if (!job) throw new Error('not found')
@@ -386,12 +368,16 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     await addUserComment(params.id, 'LGTM')
 
     if (job.type === 'impl') {
-      pollRegistry.resolve(`review:${params.id}`, { outcome: 'lgtm' })
-      return { ok: true as const, job }
+      await db.update(jobs)
+        .set({ reviewOutcome: 'lgtm', updatedAt: now() })
+        .where(eq(jobs.id, params.id))
+      const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+      wsManager.broadcast('job:updated', updated)
+      return { ok: true as const, job: updated }
     }
 
     await db.update(jobs)
-      .set({ status: 'done', completedAt: now(), updatedAt: now() })
+      .set({ status: 'done', completedAt: now(), reviewOutcome: 'approved', updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
@@ -416,7 +402,6 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       await applyAcceptedReviewToParent(updated)
     }
 
-    pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
     return { ok: true, job: updated }
   })
 
@@ -432,12 +417,11 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       await worktreeRemove(repo.path, job.branchName)
 
       await db.update(jobs)
-        .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, updatedAt: now() })
+        .set({ status: 'done', completedAt: now(), conflictedAt: null, conflictDetails: null, reviewOutcome: 'approved', updatedAt: now() })
         .where(eq(jobs.id, params.id))
 
       const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
       wsManager.broadcast('job:updated', updated)
-      pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
       await refreshSiblingConflicts(updated)
       return { ok: true, job: updated }
     }
@@ -447,14 +431,13 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       .set({
         status: nextStatus,
         completedAt: nextStatus === 'done' ? now() : null,
+        reviewOutcome: 'approved',
         updatedAt: now(),
       })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
     wsManager.broadcast('job:updated', updated)
-
-    pollRegistry.resolve(`review:${params.id}`, { outcome: 'approved' })
 
     return { ok: true, job: updated }
   })
@@ -496,16 +479,11 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     if (body.comment) await addUserComment(params.id, body.comment)
 
     await db.update(jobs)
-      .set({ status: 'in-progress', updatedAt: now() })
+      .set({ status: 'in-progress', reviewOutcome: 'changes-requested', updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
     wsManager.broadcast('job:updated', updated)
-
-    pollRegistry.resolve(`review:${params.id}`, {
-      outcome: 'changes-requested',
-      comment: body.comment ?? '',
-    })
 
     return { ok: true, job: updated }
   }, {
@@ -540,7 +518,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     if (!job) throw new Error('not found')
 
     await db.update(jobs)
-      .set({ status: 'in-progress', completedAt: null, updatedAt: now() })
+      .set({ status: 'in-progress', completedAt: null, reviewOutcome: null, updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!

@@ -41,6 +41,44 @@ type Comment = {
   createdAt: string
 }
 
+type ReviewResult = { outcome: string; comment?: string }
+
+async function pollUntilReviewed(jobId: string, timeoutSecs = 1800): Promise<ReviewResult> {
+  const deadline = Date.now() + timeoutSecs * 1000
+  while (Date.now() < deadline) {
+    const job = await apiGet<Job>(`/jobs/${jobId}`)
+    if (job.reviewOutcome) {
+      if (job.reviewOutcome === 'changes-requested') {
+        const comments = await apiGet<Comment[]>(`/jobs/${jobId}/comments`)
+        const latest = comments[comments.length - 1]
+        return { outcome: 'changes-requested', comment: latest?.body }
+      }
+      return { outcome: job.reviewOutcome }
+    }
+    await new Promise(r => setTimeout(r, 3_000))
+  }
+  return { outcome: 'timeout' }
+}
+
+function printReviewResult(result: ReviewResult, job: Job) {
+  if (result.outcome === 'lgtm') {
+    console.log(`  OK  LGTM received. Job #${job.refNum} remains in-review for downstream review work.`)
+  } else if (result.outcome === 'approved') {
+    const finalState = job.type === 'impl' ? 'approved' : 'done'
+    console.log(`  OK  Approved. Job #${job.refNum} moved to ${finalState}.`)
+  } else if (result.outcome === 'changes-requested') {
+    console.log('\n  Changes requested.')
+    if (result.comment) {
+      console.log(`     "${result.comment}"`)
+    }
+    console.log(`     Job #${job.refNum} moved back to in-progress.`)
+    process.exit(1)
+  } else {
+    console.log('  Timed out waiting for review.')
+    process.exit(1)
+  }
+}
+
 function printJob(job: Job) {
   console.log(`\n#${job.refNum} ${job.title}`)
   console.log(`  type:    ${job.type}`)
@@ -345,26 +383,10 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     }, 1000)
 
     try {
-      const reviewResult = await apiPost<{ outcome: string; comment?: string }>(`/jobs/${updatedJob.id}/await-review`)
+      const reviewResult = await pollUntilReviewed(updatedJob.id)
       clearInterval(timer)
       process.stdout.write('\n')
-
-      if (reviewResult.outcome === 'lgtm') {
-        console.log(`  OK  LGTM received. Job #${updatedJob.refNum} remains in-review for downstream review work.`)
-      } else if (reviewResult.outcome === 'approved') {
-        const finalState = updatedJob.type === 'impl' ? 'approved' : 'done'
-        console.log(`  OK  Approved. Job #${updatedJob.refNum} moved to ${finalState}.`)
-      } else if (reviewResult.outcome === 'changes-requested') {
-        console.log('\n  Return changes requested.')
-        if (reviewResult.comment) {
-          console.log(`     "${reviewResult.comment}"`)
-        }
-        console.log(`     Job #${updatedJob.refNum} moved back to in-progress.`)
-        process.exit(1)
-      } else {
-        console.log('  Timed out waiting for review.')
-        process.exit(1)
-      }
+      printReviewResult(reviewResult, updatedJob)
     } catch (error) {
       clearInterval(timer)
       process.stdout.write('\n')
@@ -420,6 +442,31 @@ export async function jobCommands(subcommand: string, argv: string[]) {
     const job = await resolveJob(args.job)
     await apiPost(`/jobs/${job.id}/done`)
     console.log(`Job #${job.refNum} marked done.`)
+    return
+  }
+
+  if (subcommand === 'wait') {
+    if (!args.job) throw new Error('--job is required')
+    const job = await resolveJob(args.job)
+    if (job.status !== 'in-review') throw new Error(`job #${job.refNum} is not in-review (status: ${job.status})`)
+
+    console.log(`  ... In review - waiting for human approval`)
+    let elapsed = 0
+    const timer = setInterval(() => {
+      elapsed += 1
+      process.stdout.write(`\r     ${elapsed} seconds elapsed...  `)
+    }, 1000)
+
+    try {
+      const reviewResult = await pollUntilReviewed(job.id)
+      clearInterval(timer)
+      process.stdout.write('\n')
+      printReviewResult(reviewResult, job)
+    } catch (error) {
+      clearInterval(timer)
+      process.stdout.write('\n')
+      throw error
+    }
     return
   }
 
