@@ -22,9 +22,14 @@ export function PathPicker({
   )
 
   const openBrowser = useCallback(() => {
-    setBrowsing(value || undefined)
+    let initialPath: string | undefined = value || undefined
+    if (selectFiles && value) {
+      const lastSep = Math.max(value.lastIndexOf('/'), value.lastIndexOf('\\'))
+      if (lastSep > 0) initialPath = value.slice(0, lastSep)
+    }
+    setBrowsing(initialPath)
     setOpen(true)
-  }, [value])
+  }, [value, selectFiles])
 
   const handleSelect = useCallback((path: string) => {
     onChange(path)

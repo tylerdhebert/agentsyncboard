@@ -106,6 +106,18 @@ export function PathBrowserPopover({
     if (open) updatePosition()
   }, [data, open, updatePosition])
 
+  // After the popover renders, measure its actual height and clamp top if it overflows.
+  // Depends on position.top/left (not the full object) to avoid infinite loops.
+  useLayoutEffect(() => {
+    if (!popoverRef.current || !position) return
+    const actual = popoverRef.current.getBoundingClientRect().height
+    const maxTop = window.innerHeight - actual - 8
+    if (position.top > maxTop) {
+      setPosition(prev => prev ? { ...prev, top: Math.max(8, maxTop) } : prev)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [position?.top, position?.left])
+
   if (!open || !position) return null
 
   return createPortal(
