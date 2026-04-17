@@ -24,7 +24,7 @@ agentboard job claim --job $GOAL --agent $AGENT_ID
 agentboard job context --job $GOAL
 ```
 
-`job context` prints: title, type, status, description, plan, artifact, references, and comments. Read everything before doing anything else.
+`job context` prints: title, type, status, description, plan, latest update (checkpoint), scratchpad, artifact, references, comments, and injected mandate. Read everything before doing anything else.
 
 If the goal has a `branchName`, claiming it auto-creates that branch in the repo. The claim output will print:
 
@@ -139,9 +139,9 @@ agentboard job list --parent <impl-ref> --type review
 
 Output per line: `#<refNum>  <status>  [<type>]  <title>`
 
-Poll until all direct children are `done`, or are otherwise in a state you are intentionally handing off. Re-check blocked jobs promptly.
+For non-impl jobs, poll until `done`. For impl jobs, `approved` is your terminal state — merge is a human decision made outside the orchestrator. Re-check blocked jobs promptly.
 
-An impl job in `in-review` is not automatically terminal from your perspective. First inspect any child review jobs under that impl and make sure the review pass is actually settled before treating the parent impl as complete enough for handoff.
+An impl job in `in-review` is not automatically terminal. First inspect any child review jobs under that impl and make sure the review pass has settled before treating it as complete.
 
 There is no built-in wait command for sub-jobs. Use a loop:
 
@@ -150,11 +150,14 @@ while true; do
   remaining=$(agentboard job list --parent $GOAL --status open)
   remaining+=$(agentboard job list --parent $GOAL --status in-progress)
   remaining+=$(agentboard job list --parent $GOAL --status blocked)
+  remaining+=$(agentboard job list --parent $GOAL --status in-review)
   if [ -z "$remaining" ]; then break; fi
   echo "Still waiting..."
   sleep 30
 done
 ```
+
+This loop exits when all children are either `done` or `approved` (or `in-review` with settled child reviews). Do not include `approved` in the remaining check — it is terminal for impl jobs.
 
 ---
 
@@ -174,12 +177,12 @@ The full set of statuses is `open`, `in-progress`, `blocked`, `in-review`, `appr
 
 Typical transitions:
 - non-impl: `open -> in-progress -> in-review -> done`
-- impl: `open -> in-progress -> in-review -> approved -> done`
+- impl: `open -> in-progress -> in-review -> approved` ← orchestrator's terminal state
 
 Notes:
 - `blocked` and reopen paths can occur from intermediate states.
-- impl jobs only become `done` after merge.
-- `approved` is primarily an orchestrator state: review has settled, the impl job is mergeable, and no more review work is pending on that card.
+- `approved` means review has settled and the impl is mergeable. Merge is a human action — `done` follows after that, but you do not wait for it.
+- You will never see an impl job move from `approved` to `done` during your session. Do not poll for it.
 
 ---
 

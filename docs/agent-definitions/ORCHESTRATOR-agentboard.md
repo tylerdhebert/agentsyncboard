@@ -45,6 +45,8 @@ agentboard input request --job <ref> --agent <id> --type yesno|choice|text --pro
 # --type text is open-ended
 # --allow-free-text on a choice question lets the human type a custom answer
 # input request BLOCKS until the human responds (up to 15 min) — do not call inside a polling loop
+agentboard input wait --job <ref> [--agent <id>]
+# re-attaches to a pending input request for the job (use after an agent restart)
 
 # ── Build ──────────────────────────────────────────────────────────────────────
 agentboard build run --job <ref>        # fire-and-forget
@@ -58,12 +60,11 @@ agentboard repo list                    # list all repos with their IDs and path
 
 **Typical transitions:**
 - non-impl: `open` → `in-progress` → `in-review` → `done`
-- impl: `open` → `in-progress` → `in-review` → `approved` → `done`
+- impl: `open` → `in-progress` → `in-review` → `approved` ← your terminal state
 
 **Notes:**
 - `blocked` and reopen paths can occur from intermediate states.
-- impl jobs only become `done` after merge.
-- `approved` is primarily an orchestrator state: review has settled, the impl job is mergeable, and no more review work is pending on that card.
+- `approved` means review has settled and the branch is mergeable. Merge is a human action. Do not wait for `done` on impl jobs — you will never see it during your session.
 
 **Job types:**
 
@@ -86,7 +87,7 @@ agentboard job claim --job <goal-ref> --agent <agent-id>
 agentboard job context --job <goal-ref>
 ```
 
-`job context` prints: title, type, status, description, plan, artifact, references, and comments. Read everything before doing anything else.
+`job context` prints: title, type, status, description, plan, latest update (checkpoint), scratchpad, artifact, references, comments, and injected mandate. Read everything before doing anything else.
 
 If the goal has a `branchName`, claiming it auto-creates that branch in the repo. The claim output prints:
 
@@ -187,22 +188,25 @@ agentboard job list --parent <impl-ref> --type review
 
 Output per line: `#<refNum>  <status>  [<type>]  <title>`
 
-Poll until all direct children are in a truthful handoff state. Re-check blocked jobs promptly.
+For non-impl jobs, wait for `done`. For impl jobs, `approved` is your terminal state — merge happens after your session ends. Re-check blocked jobs promptly.
 
-**Review jobs are children of the impl job they review.** Do not create impl-review jobs directly under the goal. The impl job owns the branch, worktree, and long-lived execution history. Review/fix cycles happen around that same impl job. When review requests changes, do NOT create a new impl job — send the impl job back through the loop on the same branch and keep any review jobs parented under that impl.
+An impl job in `in-review` is not automatically terminal. Inspect its child review jobs before deciding whether it's settled.
 
-An impl job in `in-review` is not automatically terminal from the orchestrator's perspective. Inspect its child review jobs before deciding whether the parent impl is actually ready for human handoff or further work.
+**Review jobs are children of the impl job they review.** Do not create review jobs directly under the goal. When review requests changes, do NOT create a new impl job — the same impl job goes back to `in-progress` on the same branch.
 
 ```bash
 while true; do
   remaining=$(agentboard job list --parent <goal-ref> --status open)
   remaining+=$(agentboard job list --parent <goal-ref> --status in-progress)
   remaining+=$(agentboard job list --parent <goal-ref> --status blocked)
+  remaining+=$(agentboard job list --parent <goal-ref> --status in-review)
   if [ -z "$remaining" ]; then break; fi
   echo "Still waiting..."
   sleep 30
 done
 ```
+
+This loop exits when all children are `done` or `approved`. Do not include `approved` in the remaining check.
 
 ---
 

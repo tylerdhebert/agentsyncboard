@@ -296,7 +296,7 @@ export function CreateFolderModal({ onClose }: { onClose: () => void }) {
                 key={t}
                 onClick={() => setTab(t)}
                 className={[
-                  '-mb-px border-b-2 px-3 py-3 text-[13px] font-medium capitalize transition',
+                  '-mb-px border-b-2 px-3 py-3 text-[13px] font-medium transition',
                   tab === t
                     ? 'border-[var(--accent)] text-[var(--ink)]'
                     : 'border-transparent text-[var(--dim)] hover:text-[var(--muted)]',
