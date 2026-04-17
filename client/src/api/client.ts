@@ -1,159 +1,19 @@
 import { treaty } from '@elysiajs/eden'
-import type {
-  BuildResult,
-  Comment,
-  Folder,
-  InputRequest,
-  Job,
-  JobDependency,
-  JobReference,
-  JobType,
-  JobTypeMandate,
-  Repo,
-} from './types'
+import type { App } from '@server'
 
 export const API_BASE = '/api'
 export const WS_URL = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
 
-type EdenResult<T> = Promise<{ data: T | null; error: { status: number; value: unknown } | null }>
-
-type BuildRunResult = { id: string; status: 'running' }
-type BrowseResult = { path: string; sep: string; parent: string | null; entries: { name: string; isDir: boolean }[] }
-type CommitsResult = { commits: { sha: string; message: string }[] }
-type DiffResult = { diff: string }
-type RecheckConflictsResult = { hasConflicts: boolean; files?: string[] }
-type DeleteResult = { ok: true }
-type ApproveResult = { ok: true; job: Job }
-type LgtmResult = { ok: true; job: Job }
-type CreateJobBody = {
-  type: JobType
-  title: string
-  description?: string
-  repoId?: string
-  branchName?: string
-  baseBranch?: string
-  parentJobId?: string
-  folderId?: string
-  agentId?: string
-  autoMerge?: boolean
-  requireReview?: boolean
-}
-type JobPatchBody = Partial<
-  Pick<
-    Job,
-    | 'title'
-    | 'description'
-    | 'status'
-    | 'agentId'
-    | 'folderId'
-    | 'parentJobId'
-    | 'autoMerge'
-    | 'requireReview'
-    | 'plan'
-    | 'latestUpdate'
-    | 'artifact'
-    | 'handoffSummary'
-    | 'blockedReason'
-  >
-> & {
-  scratchpad?: string
-}
-type RefBody = {
-  type: 'job' | 'file'
-  targetJobId?: string
-  filePath?: string
-  label?: string
-}
-
-type ApiClient = {
-  build: (params: { jobId: string }) => {
-    get: () => EdenResult<BuildResult | null>
-    post: () => EdenResult<BuildRunResult>
-  }
-  fs: {
-    browse: {
-      get: (options?: { query?: { path?: string; files?: string } }) => EdenResult<BrowseResult>
-    }
-  }
-  folders: {
-    get: () => EdenResult<Folder[]>
-    post: (body: { name: string; color?: string; parentFolderId?: string }) => EdenResult<Folder>
-  } & ((params: { id: string }) => {
-    patch: (body: { name?: string; color?: string; parentFolderId?: string | null }) => EdenResult<Folder>
-    delete: () => EdenResult<DeleteResult>
-  })
-  input: {
-    pending: {
-      get: () => EdenResult<InputRequest[]>
-    }
-  } & ((params: { id: string }) => {
-    answer: {
-      post: (body: { answer: string }) => EdenResult<InputRequest>
-    }
-  })
-  jobs: {
-    get: () => EdenResult<Job[]>
-    post: (body: CreateJobBody) => EdenResult<Job>
-  } & ((params: { id: string }) => {
-    get: () => EdenResult<Job>
-    patch: (body: JobPatchBody) => EdenResult<Job>
-    delete: () => EdenResult<DeleteResult>
-    approve: {
-      post: () => EdenResult<ApproveResult>
-    }
-    lgtm: {
-      post: () => EdenResult<LgtmResult>
-    }
-    merge: {
-      post: () => EdenResult<{ ok: true; job: Job }>
-    }
-    'request-changes': {
-      post: (body: { comment?: string }) => EdenResult<ApproveResult>
-    }
-    'recheck-conflicts': {
-      post: () => EdenResult<RecheckConflictsResult>
-    }
-    comments: {
-      get: () => EdenResult<Comment[]>
-      post: (body: { author: 'agent' | 'user'; agentId?: string; body: string }) => EdenResult<Comment>
-    }
-    commits: {
-      get: () => EdenResult<CommitsResult>
-    }
-    dependencies: {
-      get: () => EdenResult<JobDependency[]>
-    }
-    diff: {
-      get: (options?: { query?: { type?: 'uncommitted' | 'branch' | 'combined' } }) => EdenResult<DiffResult>
-    }
-    refs: {
-      get: () => EdenResult<JobReference[]>
-      post: (body: RefBody) => EdenResult<JobReference>
-    } & ((params: { refId: string }) => {
-      delete: () => EdenResult<DeleteResult>
-    })
-  })
-  mandates: {
-    get: (options?: { query?: { repoId?: string } }) => EdenResult<JobTypeMandate[]>
-    put: (body: { type: JobType; repoId?: string; filePath: string }) => EdenResult<JobTypeMandate>
-  } & ((params: { id: string }) => {
-    delete: () => EdenResult<DeleteResult>
-  })
-  repos: {
-    get: () => EdenResult<Repo[]>
-    post: (body: { name: string; path: string; baseBranch?: string; buildCommand?: string }) => EdenResult<Repo>
-  } & ((params: { id: string }) => {
-    patch: (body: { name?: string; path?: string; baseBranch?: string; buildCommand?: string | null }) => EdenResult<Repo>
-    delete: () => EdenResult<DeleteResult>
-  })
-}
-
-export const api = treaty(API_BASE, {
+export const api = treaty<App>(API_BASE, {
   keepDomain: true,
   fetch: {
     credentials: 'include',
   },
-}) as unknown as ApiClient
+})
+
+// EdenResult<T> matches the TreatyResponse shape from @elysiajs/eden treaty2.
+// error.status is unknown (not number) when no explicit error codes are defined on the route.
+type EdenResult<T> = Promise<{ data: T | null; error: { status: unknown; value: unknown } | null } & Record<string, unknown>>
 
 // Unwrap an Eden treaty response, throwing on error
 export async function unwrap<T>(result: EdenResult<T>): Promise<T> {

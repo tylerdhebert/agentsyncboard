@@ -44,7 +44,7 @@ export const buildRoutes = new Elysia({ prefix: '/build' })
       let output = ''
       let status: 'passed' | 'failed' = 'passed'
       try {
-        const result = await runBuildCommand(repo.buildCommand, wtPath)
+        const result = await runBuildCommand(repo.buildCommand!, wtPath)
         output = result.stdout.toString()
         if (result.stderr.length > 0) output += result.stderr.toString()
         if (result.exitCode !== 0) status = 'failed'
