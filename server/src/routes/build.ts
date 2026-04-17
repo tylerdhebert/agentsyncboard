@@ -8,6 +8,13 @@ import { worktreePath } from '../git'
 import { randomId } from '../lib/ids'
 import { now } from '../lib/time'
 
+async function runBuildCommand(command: string, cwd: string) {
+  if (process.platform === 'win32') {
+    return $`powershell -NoProfile -Command ${command}`.cwd(cwd).nothrow()
+  }
+
+  return $`bash -c ${command}`.cwd(cwd).nothrow()
+}
 export const buildRoutes = new Elysia({ prefix: '/build' })
 
   .post('/:jobId', async ({ params }) => {
@@ -37,7 +44,7 @@ export const buildRoutes = new Elysia({ prefix: '/build' })
       let output = ''
       let status: 'passed' | 'failed' = 'passed'
       try {
-        const result = await $`bash -c ${repo.buildCommand}`.cwd(wtPath).nothrow()
+        const result = await runBuildCommand(repo.buildCommand, wtPath)
         output = result.stdout.toString()
         if (result.stderr.length > 0) output += result.stderr.toString()
         if (result.exitCode !== 0) status = 'failed'

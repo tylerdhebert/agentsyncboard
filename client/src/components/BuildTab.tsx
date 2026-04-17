@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Job, BuildResult } from '../api/types'
+import { AnsiText } from './AnsiText'
 
 const STATUS_COLOR: Record<BuildResult['status'], string> = {
   running: 'text-amber-300',
@@ -41,16 +42,16 @@ export function BuildTab({ job }: { job: Pick<Job, 'id' | 'type' | 'branchName'>
           <button
             onClick={() => runMutation.mutate()}
             disabled={runMutation.isPending || build?.status === 'running'}
-            className="rounded-full border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.12)] px-4 py-1.5 font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
+            className="rounded-lg border border-[rgba(125,211,252,0.28)] bg-[rgba(56,189,248,0.12)] px-2.5 py-0.5 font-[var(--font-ui)] text-[0.62rem] tracking-wide text-[var(--ink)] transition hover:bg-[rgba(56,189,248,0.2)] disabled:opacity-50"
           >
             run build
           </button>
           {build && (
             <>
-              <span className={`font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.25em] ${STATUS_COLOR[build.status]}`}>
+              <span className={`font-[var(--font-ui)] text-[0.62rem] tracking-wide ${STATUS_COLOR[build.status]}`}>
                 {build.status}
               </span>
-              <span className="font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.24em] text-[var(--muted)]">
+              <span className="font-[var(--font-ui)] text-[0.58rem] tracking-wide text-[var(--muted)]">
                 {new Date(build.triggeredAt).toLocaleString()}
               </span>
             </>
@@ -69,7 +70,7 @@ export function BuildTab({ job }: { job: Pick<Job, 'id' | 'type' | 'branchName'>
           </div>
         ) : (
           <pre className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[rgba(5,8,12,0.84)] p-4 font-[var(--font-mono)] text-[0.76rem] leading-relaxed text-[var(--ink)]">
-            {build.output || '(no output)'}
+            {build.output ? <AnsiText text={build.output} /> : '(no output)'}
           </pre>
         )}
       </div>

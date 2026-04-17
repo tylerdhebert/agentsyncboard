@@ -49,11 +49,11 @@ function DiffBlock({ block, diffType }: { block: { header: string; lines: string
   return (
     <section id={blockId(block.header)} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-2">
-        <div className="font-[var(--font-ui)] text-[0.62rem] uppercase tracking-[0.28em] text-[var(--ink)]">
+        <div className="font-[var(--font-ui)] text-[0.62rem] tracking-wide text-[var(--ink)]">
           {label}
         </div>
         {diffType === 'uncommitted' && (
-          <div className="rounded-full border border-[rgba(245,185,76,0.22)] bg-[rgba(245,185,76,0.08)] px-2 py-0.5 font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.24em] text-[var(--warn)]">
+          <div className="rounded-full border border-[rgba(245,185,76,0.22)] bg-[rgba(245,185,76,0.08)] px-2 py-0.5 font-[var(--font-ui)] text-[0.46rem] tracking-wide text-[var(--warn)]">
             warning uncommitted changes
           </div>
         )}
@@ -114,13 +114,13 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[rgba(8,11,16,0.8)] px-5 py-3">
-        <div className="flex items-center gap-1 rounded-full border border-[var(--border)] bg-white/5 p-1">
+        <div className="flex items-center gap-0.5 rounded-lg border border-[var(--border)] bg-white/5 p-0.5">
           {DIFF_TYPES.map(option => (
             <button
               key={option.id}
               onClick={() => setDiffType(option.id)}
               className={[
-                'rounded-full px-3 py-1.5 font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.25em] transition',
+                'rounded-md px-2.5 py-0.5 font-[var(--font-ui)] text-[0.46rem] tracking-wide transition',
                 diffType === option.id
                   ? 'bg-[rgba(56,189,248,0.18)] text-[var(--ink)]'
                   : 'text-[var(--muted)] hover:text-[var(--ink)]',
@@ -130,7 +130,7 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
             </button>
           ))}
         </div>
-        <div className="ml-auto font-[var(--font-ui)] text-[0.58rem] uppercase tracking-[0.28em] text-[var(--muted)]">
+        <div className="ml-auto font-[var(--font-ui)] text-[0.46rem] tracking-wide text-[var(--muted)]">
           {job.branchName} → {job.baseBranch ?? 'main'}
         </div>
       </div>

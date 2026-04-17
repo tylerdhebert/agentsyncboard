@@ -5,7 +5,7 @@ import { queryKeys } from '../api/keys'
 import type { Comment, Job, JobDependency, JobReference, Repo } from '../api/types'
 import { CommentThread } from './CommentThread'
 import { PathPicker } from './PathPicker'
-import { Merge } from 'lucide-react'
+import { Merge, Play } from 'lucide-react'
 
 function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
@@ -347,7 +347,8 @@ export function DetailTab({ job }: { job: Job }) {
               disabled={runBuildMutation.isPending}
               className="flex items-center gap-1.5 rounded px-2 py-1 text-[12px] text-[var(--muted)] transition hover:bg-white/5 hover:text-[var(--ink)] disabled:opacity-50"
             >
-              <span>▶</span> run build
+              <Play className="h-3.5 w-3.5 flex-shrink-0" />
+              run build
             </button>
             {job.repoId && (
               <button
