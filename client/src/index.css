@@ -16,6 +16,10 @@
   --good: #34d399;
   --bad: #f87171;
   --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  --diff-insert-bg: rgba(46, 160, 67, 0.22);
+  --diff-delete-bg: rgba(248, 81, 73, 0.22);
+  --diff-gutter-insert-bg: rgba(46, 160, 67, 0.85);
+  --diff-gutter-delete-bg: rgba(248, 81, 73, 0.85);
   --radius: 8px;
   --radius-sm: 5px;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -85,10 +89,10 @@ button, input, textarea, select {
 
 .diff { font-size: 0.74rem; line-height: 1.6; }
 .diff-decoration-content { color: #64748b; font-size: 0.72rem; padding: 0.2rem 0.5rem; }
-.diff-code-insert { background-color: rgba(51, 145, 76, 0.62) !important; }
-.diff-code-delete { background-color: rgba(145, 45, 55, 0.62) !important; }
-.diff-gutter-insert { background-color: rgba(51, 145, 76, 0.95) !important; }
-.diff-gutter-delete { background-color: rgba(145, 45, 55, 0.95) !important; }
+.diff-code-insert { background-color: var(--diff-insert-bg) !important; }
+.diff-code-delete { background-color: var(--diff-delete-bg) !important; }
+.diff-gutter-insert { background-color: var(--diff-gutter-insert-bg) !important; }
+.diff-gutter-delete { background-color: var(--diff-gutter-delete-bg) !important; }
 
 /* Prism token colors (github-dark-dimmed palette) */
 .token.comment, .token.prolog, .token.doctype, .token.cdata { color: #768390; font-style: italic; }

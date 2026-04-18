@@ -49,7 +49,7 @@ export async function getDiff(
     case 'uncommitted':
       return $`git -C ${wtPath} diff HEAD`.text()
     case 'branch':
-      return $`git -C ${repoPath} diff ${baseBranch}...${branchName}`.text()
+      return $`git -C ${repoPath} diff ${baseBranch}..${branchName}`.text()
     case 'combined':
       return $`git -C ${wtPath} diff ${baseBranch}`.text()
   }

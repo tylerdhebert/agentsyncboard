@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import { App } from './App'
+import { applyTheme } from './themes'
+
+const savedTheme = localStorage.getItem('codeTheme') ?? 'github-dark-dimmed'
+applyTheme(savedTheme)
 
 const queryClient = new QueryClient({
   defaultOptions: {

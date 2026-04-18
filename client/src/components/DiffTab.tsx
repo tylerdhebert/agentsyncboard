@@ -417,7 +417,6 @@ const DiffFile = memo(function DiffFile({ file, viewType }: { file: FileData; vi
 export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBranch' | 'type'> }) {
   const diffType = useStore(state => state.diffType)
   const setDiffType = useStore(state => state.setDiffType)
-  const scrollRef = useRef<HTMLDivElement>(null)
   const [viewType, setViewType] = useState<ViewType>('unified')
   const [activeFile, setActiveFile] = useState<string | null>(null)
 
@@ -432,20 +431,38 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
     try { return parseDiff(data.diff) } catch { return [] }
   }, [data?.diff])
 
+  const fileEntries = useMemo(() => {
+    return files.map(file => {
+      const path = file.newPath !== '/dev/null' ? (file.newPath ?? '') : (file.oldPath ?? '')
+      const added = file.hunks.reduce((n, h) => n + h.changes.filter(c => c.type === 'insert').length, 0)
+      const removed = file.hunks.reduce((n, h) => n + h.changes.filter(c => c.type === 'delete').length, 0)
+      return { file, path, added, removed }
+    })
+  }, [files])
+
+  useEffect(() => {
+    if (fileEntries.length === 0) {
+      setActiveFile(null)
+      return
+    }
+
+    setActiveFile(current => {
+      if (current && fileEntries.some(entry => entry.path === current)) return current
+      return fileEntries[0].path
+    })
+  }, [fileEntries])
+
+  const activeEntry = useMemo(() => {
+    if (!activeFile) return fileEntries[0] ?? null
+    return fileEntries.find(entry => entry.path === activeFile) ?? fileEntries[0] ?? null
+  }, [activeFile, fileEntries])
+
   if (job.type !== 'impl' || !job.branchName) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-[0.92rem] text-[var(--muted)]">
         Diff view is only available for implementation jobs with a worktree.
       </div>
     )
-  }
-
-  function scrollToFile(path: string) {
-    const el = scrollRef.current?.querySelector(`#${fileId(path)}`)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      setActiveFile(path)
-    }
   }
 
   return (
@@ -463,18 +480,15 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
       </div>
 
       <div className="flex min-h-0 flex-1">
-        {files.length > 0 && (
+        {fileEntries.length > 0 && (
           <div className="flex w-56 shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-[var(--border)] bg-[rgba(255,255,255,0.02)] p-3">
-            {files.map(file => {
-              const path = file.newPath !== '/dev/null' ? (file.newPath ?? '') : (file.oldPath ?? '')
+            {fileEntries.map(({ file, path, added, removed }) => {
               const { name, dir } = fileParts(path)
               const isActive = activeFile === path
-              const added = file.hunks.reduce((n, h) => n + h.changes.filter(c => c.type === 'insert').length, 0)
-              const removed = file.hunks.reduce((n, h) => n + h.changes.filter(c => c.type === 'delete').length, 0)
               return (
                 <button
                   key={path}
-                  onClick={() => scrollToFile(path)}
+                  onClick={() => setActiveFile(path)}
                   className={[
                     'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition',
                     isActive
@@ -496,21 +510,34 @@ export function DiffTab({ job }: { job: Pick<Job, 'id' | 'branchName' | 'baseBra
           </div>
         )}
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto p-5">
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {isLoading ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
               loading diff...
             </div>
-          ) : files.length === 0 ? (
+          ) : fileEntries.length === 0 ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
               no changes.
             </div>
+          ) : !activeEntry ? (
+            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-6 text-[0.92rem] text-[var(--muted)]">
+              select a file to view its diff.
+            </div>
           ) : (
             <div className="space-y-4">
-              {files.map(file => {
-                const path = file.newPath !== '/dev/null' ? (file.newPath ?? '') : (file.oldPath ?? '')
-                return <DiffFile key={path} file={file} viewType={viewType} />
-              })}
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-2.5">
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-[0.78rem] text-[var(--ink)]">{activeEntry.path}</div>
+                  <div className="text-[0.68rem] text-[var(--muted)]">
+                    {fileEntries.findIndex(entry => entry.path === activeEntry.path) + 1} of {fileEntries.length}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-1.5 font-mono text-[0.725rem]">
+                  {activeEntry.added > 0 && <span style={{ color: '#33914c' }}>+{activeEntry.added}</span>}
+                  {activeEntry.removed > 0 && <span style={{ color: '#912d37' }}>-{activeEntry.removed}</span>}
+                </div>
+              </div>
+              <DiffFile key={`${activeEntry.path}:${viewType}`} file={activeEntry.file} viewType={viewType} />
             </div>
           )}
         </div>

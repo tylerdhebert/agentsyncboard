@@ -26,6 +26,25 @@ const SHIKI_THEMES = [
   { id: 'min-dark', label: 'Min Dark' },
 ] as const
 
+const THEME_ACCENTS: Record<string, string> = {
+  'github-dark-dimmed': '#539bf5',
+  'github-dark': '#58a6ff',
+  'one-dark-pro': '#61afef',
+  'dracula': '#bd93f9',
+  'nord': '#88c0d0',
+  'tokyo-night': '#7aa2f7',
+  'catppuccin-mocha': '#89b4fa',
+  'monokai': '#a6e22e',
+  'night-owl': '#82aaff',
+  'rose-pine': '#c4a7e7',
+  'synthwave-84': '#ff7edb',
+  'kanagawa-wave': '#7e9cd8',
+  'vitesse-dark': '#4d9375',
+  'vesper': '#ffc799',
+  'material-theme-darker': '#82aaff',
+  'min-dark': '#6699cc',
+}
+
 function AppearanceTab() {
   const codeTheme = useStore(state => state.codeTheme)
   const setCodeTheme = useStore(state => state.setCodeTheme)
@@ -33,18 +52,22 @@ function AppearanceTab() {
   return (
     <div className="space-y-4">
       <div>
-        <div className="mb-3 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">code highlighting theme</div>
+        <div className="mb-3 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">theme</div>
         <div className="grid grid-cols-2 gap-1.5">
           {SHIKI_THEMES.map(t => (
             <button
               key={t.id}
               onClick={() => setCodeTheme(t.id)}
-              className={`rounded-md border px-3 py-2 text-left text-[12px] font-medium transition ${
+              className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[12px] font-medium transition ${
                 codeTheme === t.id
                   ? 'border-[var(--accent)] bg-[rgba(125,211,252,0.08)] text-[var(--ink)]'
                   : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-strong)] hover:text-[var(--ink)]'
               }`}
             >
+              <span
+                className="inline-block h-2 w-2 flex-shrink-0 rounded-full"
+                style={{ background: THEME_ACCENTS[t.id] }}
+              />
               {t.label}
             </button>
           ))}
