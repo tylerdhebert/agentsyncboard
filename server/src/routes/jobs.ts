@@ -350,11 +350,11 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     }
 
     await db.update(jobs)
-      .set({ status: 'in-review', updatedAt: now() })
+      .set({ status: 'in-review', reviewOutcome: null, updatedAt: now() })
       .where(eq(jobs.id, params.id))
 
     const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
-    wsManager.broadcast('job:updated', updated)
+    wsManager.broadcast('job:in-review', updated)
 
     return { status: 'in-review', job: updated }
   })

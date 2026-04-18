@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
+import type { Components } from 'react-markdown'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { Comment, Job, JobDependency, JobReference, Repo } from '../api/types'
 import { CommentThread } from './CommentThread'
 import { PathPicker } from './PathPicker'
+import { CodeBlock } from './CodeBlock'
+import { useStore } from '../store'
 import { Merge, Play } from 'lucide-react'
 
 function Field({ label, value }: { label: string; value: string | null }) {
@@ -18,8 +23,39 @@ function Field({ label, value }: { label: string; value: string | null }) {
   )
 }
 
+const ArtifactMarkdown = memo(function ArtifactMarkdown({ content, codeTheme }: { content: string; codeTheme: string }) {
+  const components = useMemo<Components>(() => ({
+    h1: ({ children }) => <h1 className="mb-3 mt-5 text-base font-semibold text-[var(--ink)] first:mt-0">{children}</h1>,
+    h2: ({ children }) => <h2 className="mb-2 mt-4 text-sm font-semibold text-[var(--ink)] first:mt-0">{children}</h2>,
+    h3: ({ children }) => <h3 className="mb-2 mt-3 text-sm font-medium text-[var(--ink)] first:mt-0">{children}</h3>,
+    p: ({ children }) => <p className="mb-3 text-sm leading-relaxed text-[var(--ink)] last:mb-0">{children}</p>,
+    ul: ({ children }) => <ul className="mb-3 list-disc space-y-1 pl-5 text-sm text-[var(--ink)] last:mb-0">{children}</ul>,
+    ol: ({ children }) => <ol className="mb-3 list-decimal space-y-1 pl-5 text-sm text-[var(--ink)] last:mb-0">{children}</ol>,
+    li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+    blockquote: ({ children }) => <blockquote className="mb-3 border-l-2 border-[var(--border-strong)] pl-3 text-sm text-[var(--muted)]">{children}</blockquote>,
+    a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" className="text-[var(--accent)] underline underline-offset-2 hover:text-[var(--ink)]">{children}</a>,
+    hr: () => <hr className="my-4 border-[var(--border)]" />,
+    pre: ({ children }) => <>{children}</>,
+    code: ({ className, children }) => {
+      const language = /language-(\w+)/.exec(className ?? '')?.[1] ?? ''
+      const text = String(children ?? '').replace(/\n$/, '')
+      if (language || text.includes('\n')) {
+        return <CodeBlock code={text} language={language || 'text'} theme={codeTheme} />
+      }
+      return <code className="rounded bg-[rgba(255,255,255,0.08)] px-1 py-0.5 font-mono text-xs text-[var(--ink)]">{children}</code>
+    },
+  }), [codeTheme])
+
+  return (
+    <div className="rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-4">
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>{content}</ReactMarkdown>
+    </div>
+  )
+})
+
 function ArtifactField({ job }: { job: Job }) {
   const queryClient = useQueryClient()
+  const codeTheme = useStore(state => state.codeTheme)
   const canEdit = job.type !== 'impl' && job.status === 'in-review'
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(job.artifact ?? '')
@@ -90,11 +126,7 @@ function ArtifactField({ job }: { job: Job }) {
           </div>
         </div>
       ) : job.artifact ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--ink)]">
-            {job.artifact}
-          </pre>
-        </div>
+        <ArtifactMarkdown content={job.artifact} codeTheme={codeTheme} />
       ) : null}
     </section>
   )

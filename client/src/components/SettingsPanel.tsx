@@ -5,6 +5,54 @@ import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
 import type { JobType, Repo, JobTypeMandate } from '../api/types'
 import { PathPicker } from './PathPicker'
+import { useStore } from '../store'
+
+const SHIKI_THEMES = [
+  { id: 'github-dark-dimmed', label: 'GitHub Dimmed' },
+  { id: 'github-dark', label: 'GitHub Dark' },
+  { id: 'one-dark-pro', label: 'One Dark Pro' },
+  { id: 'dracula', label: 'Dracula' },
+  { id: 'nord', label: 'Nord' },
+  { id: 'tokyo-night', label: 'Tokyo Night' },
+  { id: 'catppuccin-mocha', label: 'Catppuccin Mocha' },
+  { id: 'monokai', label: 'Monokai' },
+  { id: 'night-owl', label: 'Night Owl' },
+  { id: 'rose-pine', label: 'Rosé Pine' },
+  { id: 'synthwave-84', label: 'Synthwave \'84' },
+  { id: 'kanagawa-wave', label: 'Kanagawa Wave' },
+  { id: 'vitesse-dark', label: 'Vitesse Dark' },
+  { id: 'vesper', label: 'Vesper' },
+  { id: 'material-theme-darker', label: 'Material Darker' },
+  { id: 'min-dark', label: 'Min Dark' },
+] as const
+
+function AppearanceTab() {
+  const codeTheme = useStore(state => state.codeTheme)
+  const setCodeTheme = useStore(state => state.setCodeTheme)
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="mb-3 text-[11px] font-medium uppercase tracking-wider text-[var(--dim)]">code highlighting theme</div>
+        <div className="grid grid-cols-2 gap-1.5">
+          {SHIKI_THEMES.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setCodeTheme(t.id)}
+              className={`rounded-md border px-3 py-2 text-left text-[12px] font-medium transition ${
+                codeTheme === t.id
+                  ? 'border-[var(--accent)] bg-[rgba(125,211,252,0.08)] text-[var(--ink)]'
+                  : 'border-[var(--border)] text-[var(--muted)] hover:border-[var(--border-strong)] hover:text-[var(--ink)]'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 type RepoForm = {
   name: string
@@ -240,7 +288,7 @@ function JobInstructionsTab({ repos }: { repos: Repo[] }) {
 
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
-  const [tab, setTab] = useState<'repos' | 'instructions'>('repos')
+  const [tab, setTab] = useState<'repos' | 'instructions' | 'appearance'>('repos')
   const [name, setName] = useState('')
   const [path, setPath] = useState('')
   const [baseBranch, setBaseBranch] = useState('main')
@@ -321,6 +369,16 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           >
             job instructions
           </button>
+          <button
+            onClick={() => setTab('appearance')}
+            className={`px-4 py-3 text-[12px] font-medium transition border-b-2 -mb-px ${
+              tab === 'appearance'
+                ? 'border-[var(--accent)] text-[var(--ink)]'
+                : 'border-transparent text-[var(--muted)] hover:text-[var(--ink)]'
+            }`}
+          >
+            appearance
+          </button>
         </div>
 
         {/* Body */}
@@ -377,6 +435,10 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
           {tab === 'instructions' && (
             <JobInstructionsTab repos={repos} />
+          )}
+
+          {tab === 'appearance' && (
+            <AppearanceTab />
           )}
         </div>
       </div>

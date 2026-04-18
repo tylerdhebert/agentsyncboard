@@ -7,6 +7,9 @@ type Store = {
   selectedJobId: string | null
   setSelectedJobId: (id: string | null) => void
 
+  codeTheme: string
+  setCodeTheme: (theme: string) => void
+
   activeTab: ActiveTab
   setActiveTab: (tab: ActiveTab) => void
 
@@ -30,6 +33,12 @@ type Store = {
 export const useStore = create<Store>(set => ({
   selectedJobId: null,
   setSelectedJobId: id => set({ selectedJobId: id }),
+
+  codeTheme: localStorage.getItem('codeTheme') ?? 'github-dark-dimmed',
+  setCodeTheme: theme => {
+    localStorage.setItem('codeTheme', theme)
+    set({ codeTheme: theme })
+  },
 
   activeTab: 'detail',
   setActiveTab: tab => set({ activeTab: tab }),
