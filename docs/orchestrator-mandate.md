@@ -24,7 +24,7 @@ agentboard job claim --job $GOAL --agent $AGENT_ID
 agentboard job context --job $GOAL
 ```
 
-`job context` prints: title, type, status, description, plan, latest update (checkpoint), scratchpad, artifact, references, comments, and injected mandate. Read everything before doing anything else.
+`job context` prints: title, type, status, description, plan, latest update (checkpoint), handoff summary when present, an artifact preview, references, comments, and injected mandate. Referenced jobs show their handoff summary by default when one exists. Read everything before doing anything else.
 
 If the goal has a `branchName`, claiming it auto-creates that branch in the repo. The claim output will print:
 
@@ -44,7 +44,7 @@ One job per independent unit of work. Job types:
 | type       | use for                                          |
 |------------|--------------------------------------------------|
 | `analysis` | research, investigation, reading existing code   |
-| `plan`     | design docs, architecture decisions              |
+| `plan`     | task decomposition, ordered implementation steps |
 | `impl`     | code changes in a worktree                       |
 | `review`   | reviewing a branch or artifact from another job  |
 | `goal`     | nested orchestration (large decompositions only) |
@@ -95,7 +95,7 @@ agentboard job checkpoint --job $GOAL --agent $AGENT_ID \
 
 ## Step 3 — Attach references before handing off
 
-Workers call `job context` and all attached references are inlined automatically. Attach references **before** a worker claims the job.
+Workers call `job context` and attached references are expanded into that context. Job references show the referenced job's handoff summary when one exists, otherwise they fall back to the referenced artifact. File references inline file contents. Attach references **before** a worker claims the job.
 
 ```bash
 # Link another job's artifact as context (e.g. give #44 the output of #43)
@@ -111,7 +111,7 @@ agentboard ref list --job 44
 agentboard ref remove --job 44 --ref <ref-id>
 ```
 
-`ref add --job-ref` resolves the target job and stores its ID. When the worker calls `job context`, the target job's artifact is inlined under that reference. If the artifact is not yet written, it inlines nothing — attach refs after the dependency completes.
+`ref add --job-ref` resolves the target job and stores its ID. When the worker calls `job context`, the target job's handoff summary is shown under that reference when one exists, otherwise the target artifact is shown. If neither has been written yet, that reference contributes no content — attach refs after the dependency completes.
 
 ---
 
@@ -139,54 +139,19 @@ agentboard job list --parent <impl-ref> --type review
 
 Output per line: `#<refNum>  <status>  [<type>]  <title>`
 
-For non-impl jobs, poll until `done`. For impl jobs, `approved` is your terminal state — merge is a human decision made outside the orchestrator. Re-check blocked jobs promptly.
+You spawn workers and know when they complete. Use list commands to check status when you need a snapshot or to catch blocked jobs. Re-check blocked jobs promptly.
 
-An impl job in `in-review` is not automatically terminal. First inspect any child review jobs under that impl and make sure the review pass has settled before treating it as complete.
+For non-impl jobs, `done` is terminal. For impl jobs, `approved` is your terminal state — merge is a human action that happens after your session ends. You will never see an impl job move to `done` during your session. Do not poll for it.
 
-There is no built-in wait command for sub-jobs. Use a loop:
-
-```bash
-while true; do
-  remaining=$(agentboard job list --parent $GOAL --status open)
-  remaining+=$(agentboard job list --parent $GOAL --status in-progress)
-  remaining+=$(agentboard job list --parent $GOAL --status blocked)
-  remaining+=$(agentboard job list --parent $GOAL --status in-review)
-  if [ -z "$remaining" ]; then break; fi
-  echo "Still waiting..."
-  sleep 30
-done
-```
-
-This loop exits when all children are either `done` or `approved` (or `in-review` with settled child reviews). Do not include `approved` in the remaining check — it is terminal for impl jobs.
-
----
-
-## Step 5 — Read completed artifacts
-
-```bash
-agentboard job context --job <sub-job-ref>
-```
-
-The artifact field is the worker's deliverable. Use it to inform the next sub-job or to write your synthesis.
-
-If an impl job is `in-review`, also read any child review jobs beneath it. Review jobs are part of the same unit of work, not a separate sibling track.
-
-If a child review job is accepted with an `Approve` verdict, the parent impl moves to `approved`. If the accepted verdict requests changes, the parent impl moves back to `in-progress`. Accepted review jobs should be attached back onto the parent impl as references.
-
-The full set of statuses is `open`, `in-progress`, `blocked`, `in-review`, `approved`, and `done`.
+An impl job in `in-review` is not automatically terminal. Inspect its child review jobs before treating it as settled. When a review is accepted with `Approve`, the parent impl moves to `approved` automatically. When accepted with `Request Changes`, it moves back to `in-progress`.
 
 Typical transitions:
 - non-impl: `open -> in-progress -> in-review -> done`
-- impl: `open -> in-progress -> in-review -> approved` ← orchestrator's terminal state
-
-Notes:
-- `blocked` and reopen paths can occur from intermediate states.
-- `approved` means review has settled and the impl is mergeable. Merge is a human action — `done` follows after that, but you do not wait for it.
-- You will never see an impl job move from `approved` to `done` during your session. Do not poll for it.
+- impl: `open -> in-progress -> in-review -> approved` ← your terminal state
 
 ---
 
-## Step 6 — Synthesize and finish
+## Step 5 — Synthesize and finish
 
 Once all sub-jobs are in a truthful handoff state and any nested review work has been accounted for:
 
@@ -200,6 +165,8 @@ agentboard job ready --job $GOAL
 ```
 
 `job ready` marks the goal `in-review`. Always call it — do not just stop. If `requireReview` is set on the goal, `ready` blocks until a human `LGTM` or requests changes. For impl jobs, human `LGTM` can leave the job in `in-review` while downstream child review work continues.
+
+Goal jobs communicate their final synthesis to the human through the artifact. Worker jobs use handoff summaries to communicate findings to one another.
 
 ---
 
@@ -245,6 +212,9 @@ agentboard job checkpoint --job $GOAL --agent $AGENT_ID "Starting phase 2."
 
 # Write or overwrite the goal's artifact without marking ready
 agentboard job artifact --job $GOAL --agent $AGENT_ID "Draft synthesis..."
+
+# Read a full artifact when the preview in job context is not enough
+agentboard job artifact --job <job-ref>
 
 # Get the worktree path for an impl job (read-only, workers use this)
 agentboard job worktree --job <impl-ref>

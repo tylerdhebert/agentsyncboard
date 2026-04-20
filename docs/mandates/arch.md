@@ -18,8 +18,10 @@ Understand the goal and constraints. If an analysis job is attached, its finding
 
 ```bash
 answer=$(agentboard input request --job <job-ref> --agent <agent-id> \
-  --type text --prompt "What are the hard constraints I should design around? (scale, existing systems, team size, timeline, etc.)")
+  --type text --prompt "What are the hard constraints I should design around? (scale, existing systems etc.)")
 ```
+
+Tailor this question to the task at hand with real questions you have about implementation strategy and the task.
 
 ---
 
@@ -71,38 +73,45 @@ answer=$(agentboard input request --job <job-ref> --agent <agent-id> \
 
 ## Step 4 — Write artifact and mark ready
 
+Label claims about the existing system with their epistemic status: `[observed]` (directly seen in code or config), `[inferred]` (reasoned from evidence), or `[assumed]` (design assumption that must hold for this to work).
+
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Recommendation
 
-One paragraph: what to build and the core rationale.
+2-3 sentences: what to build and why this approach over the alternatives.
 
 ## Design
 
-### Components
-What each part of the system is responsible for.
-
-### Interfaces
-How the components communicate — APIs, events, data shapes.
-
-### Data Model
-Key entities and relationships (if applicable).
-
-### Failure Modes
-What breaks and how the system recovers.
+Key decisions as bullets — interfaces, data shapes, and ownership boundaries only.
+Do not write a full design doc. If something belongs in implementation, leave it out.
+- [decided] <decision and rationale>
+- [assumed] <constraint this design relies on>
+- [observed] <relevant fact about the existing system>
 
 ## Alternatives Considered
 
-### [Option name]
-What it was and why it was rejected.
+Max 3. One line each: what it was and the single reason it was rejected.
+- [Option name]: rejected because <one reason>
 
 ## Open Questions
 
-Decisions that were deferred or require human input before implementation.
+Bullet list. Mark any that are blocking implementation with [blocking].
+- [blocking] <question that must be resolved before impl starts>
+- <question that can be resolved during impl>
+EOF
+)"
 
-## Constraints and Assumptions
+```
 
-What this design relies on being true.
+Then write a compact handoff summary — this is what downstream agents inherit by default, not the full artifact above:
+
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- recommendation: <what to build, one sentence>
+- constraint: <key constraint this design relies on>
+- decision: <key architectural decision made>
+- open: <unresolved question, if any>
 EOF
 )"
 
@@ -122,4 +131,5 @@ agentboard job wait --job <job-ref>
 2. **Do not write code.** Pseudocode or interface sketches are fine; implementation is not.
 3. **Name the constraints explicitly.** A design that hides its assumptions will break when they change.
 4. **Surface open questions.** Don't resolve what you can't resolve — flag it.
-5. **`job ready` is the only way to finish.**
+5. **Label epistemic status.** Every claim in the artifact must be `[decided]`, `[observed]`, `[inferred]`, or `[assumed]`. Unlabeled claims will be treated as facts by downstream agents.
+6. **`job ready` is the only way to finish.**

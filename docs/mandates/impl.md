@@ -22,7 +22,7 @@ This prints a worktree path. `cd` there immediately. **All file work happens ins
 agentboard job context --job <job-ref>
 ```
 
-Prints: title, description, plan, references, and comments. Read everything. References are inlined automatically — attached job artifacts and files are included in the output.
+Prints: title, description, plan, references, and comments. Read everything. Referenced jobs show their handoff summary by default — if you need the full artifact of a referenced job, run `agentboard job artifact --job <ref-job>` directly.
 
 Human comments are instructions. Act on them before doing anything else.
 
@@ -93,7 +93,7 @@ Summarize what you built:
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Summary
 
-Brief description of what was implemented.
+1-2 sentences: what was implemented and any significant decision made.
 
 ## Changes
 - `path/to/file.ts` — what changed and why
@@ -101,6 +101,18 @@ Brief description of what was implemented.
 
 ## Notes
 Any caveats, deferred work, or decisions made.
+EOF
+)"
+
+```
+
+Then write a compact handoff summary before marking ready:
+
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- built: <what was implemented, one sentence>
+- files: <key files changed>
+- notes: <caveats or deferred items, if any>
 EOF
 )"
 
@@ -143,8 +155,9 @@ agentboard job scratch --job <job-ref> --agent <agent-id> \
 agentboard job checkpoint --job <job-ref> --agent <agent-id> \
   "Addressed review findings: fixed X and Y."
 
-# Update artifact and mark ready again
+# Update artifact and handoff summary, then mark ready again
 agentboard job artifact --job <job-ref> --agent <agent-id> "..."
+agentboard job handoff --job <job-ref> --agent <agent-id> "..."
 agentboard job ready --job <job-ref>
 ```
 

@@ -36,20 +36,24 @@ Checkpoints let the human see your work in progress and redirect you early if yo
 
 ---
 
-## Step 3 — Write artifact and mark ready
+## Step 3 — Write artifact, handoff summary, and mark ready
 
-Your artifact is a structured summary of findings — not a plan, not recommendations (unless specifically asked). State what you found, where you found it, and what it means.
+Your artifact is a structured summary of findings — not a plan, not recommendations (unless specifically asked). Label every claim with its epistemic status: `[observed]` (directly seen in code or logs), `[inferred]` (reasoned from evidence), or `[speculative]` (hypothesis not yet confirmed).
 
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Summary
 
-One paragraph: what you investigated and the key finding.
+2 sentences max: what you investigated and the single most important finding.
 
 ## Findings
 
+1-5 findings. Each finding gets its own section. Every claim must carry a label.
+
 ### [Topic A]
-What you found, where (file paths, line numbers), what it means.
+[observed] What you directly saw — file paths, line numbers, exact behavior.
+[inferred] What this means or implies.
+[speculative] Hypotheses or possibilities not yet verified.
 
 ### [Topic B]
 ...
@@ -57,6 +61,19 @@ What you found, where (file paths, line numbers), what it means.
 ## What Was Not Investigated
 
 Scope you intentionally skipped or couldn't reach, so the reader knows what's missing.
+EOF
+)"
+```
+
+Then write a compact handoff summary — this is what downstream agents inherit by default, not the full artifact above:
+
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- objective: <what was investigated>
+- finding: <key finding with epistemic label>
+- finding: <additional finding if relevant>
+- gaps: <what was not investigated>
+- recommendation: <what should happen next, if applicable>
 EOF
 )"
 
@@ -76,4 +93,5 @@ agentboard job wait --job <job-ref>
 2. **State facts, not opinions.** If you have a recommendation, put it in a clearly labeled section.
 3. **Cite locations.** File paths and line numbers make findings actionable.
 4. **Document your scope.** Say what you didn't investigate, not just what you did.
-5. **`job ready` is the only way to finish.**
+5. **Label epistemic status.** Every claim must be `[observed]`, `[inferred]`, or `[speculative]`. Unlabeled claims will be treated as facts by downstream agents.
+6. **`job ready` is the only way to finish.**

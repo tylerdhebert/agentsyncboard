@@ -60,26 +60,36 @@ agentboard job checkpoint --job <job-ref> --agent <agent-id> "Draft plan:
 
 ## Step 4 — Write artifact and mark ready
 
+Each task must be self-contained: an impl agent should be able to execute it without reading the arch or analysis artifacts. If a task requires an assumption, state it inline. Max 8 tasks — if more are needed, the scope should be split into multiple impl jobs.
+
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Approach
 
-What we're building and why this approach was chosen over alternatives.
+1-2 sentences: what is being built and why this approach.
 
 ## Tasks
 
-Ordered list of implementation tasks, each small enough for a single agent turn.
+1. In `path/to/file.ts` — <specific change: what to add/modify/remove and why>
+   [assumes] <any constraint the impl agent must know, e.g. "do not change the public API">
+2. In `path/to/other.ts` — <specific change>
+...
 
-1. ...
-2. ...
+## Risks
 
-## Files Affected
+- <known unknown or deferred decision that could block impl>
+EOF
+)"
 
-- `path/to/file` — what changes and why
+```
 
-## Risks and Open Questions
+Then write a compact handoff summary — this is what downstream agents inherit by default, not the full artifact above:
 
-- Any known unknowns or deferred decisions
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- approach: <one sentence>
+- tasks: <N tasks, one per line>
+- risk: <top risk or assumption to verify>
 EOF
 )"
 

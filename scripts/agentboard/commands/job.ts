@@ -30,7 +30,7 @@ type JobRef = {
   targetJobId: string | null
   filePath: string | null
   label: string | null
-  targetJob: { id: string; refNum: number; title: string; artifact: string | null } | null
+  targetJob: { id: string; refNum: number; title: string; artifact: string | null; handoffSummary: string | null } | null
 }
 
 type Comment = {
@@ -100,9 +100,16 @@ function printJob(job: Job) {
     console.log(job.latestUpdate)
     console.log('--- END LATEST UPDATE ---')
   }
+  if (job.handoffSummary) {
+    console.log('\n--- HANDOFF SUMMARY ---')
+    console.log(job.handoffSummary)
+    console.log('--- END HANDOFF SUMMARY ---')
+  }
   if (job.artifact) {
+    const ARTIFACT_PREVIEW_CHARS = 500
+    const truncated = job.artifact.length > ARTIFACT_PREVIEW_CHARS
     console.log('\n--- ARTIFACT ---')
-    console.log(job.artifact)
+    console.log(truncated ? job.artifact.slice(0, ARTIFACT_PREVIEW_CHARS) + `\n...(truncated — run 'agentboard job artifact --job #${job.refNum}' to read full)` : job.artifact)
     console.log('--- END ARTIFACT ---')
   }
   if ((job as Record<string, unknown>).scratchpad) {
@@ -184,7 +191,9 @@ export async function jobCommands(subcommand: string, argv: string[]) {
               console.log(`  branch: ${fullRef.branchName}`)
             }
           } catch { /* best effort */ }
-          if (ref.targetJob.artifact) {
+          if (ref.targetJob.handoffSummary) {
+            console.log(`  handoff:\n  ${ref.targetJob.handoffSummary.replace(/\n/g, '\n  ')}`)
+          } else if (ref.targetJob.artifact) {
             console.log(`  artifact:\n  ${ref.targetJob.artifact.replace(/\n/g, '\n  ')}`)
           }
         } else if (ref.type === 'file') {
@@ -321,11 +330,25 @@ export async function jobCommands(subcommand: string, argv: string[]) {
 
   if (subcommand === 'artifact') {
     if (!args.job) throw new Error('--job is required')
+    const job = await resolveJob(args.job)
+    if (!args.agent && !args['from-file'] && args._.length === 0) {
+      console.log(job.artifact ?? '(no artifact)')
+      return
+    }
     if (!args.agent) throw new Error('--agent is required')
     const text = await resolveText(args, 'artifact')
-    const job = await resolveJob(args.job)
     await apiPatch(`/jobs/${job.id}`, { artifact: text })
     console.log(`Artifact written to job #${job.refNum}.`)
+    return
+  }
+
+  if (subcommand === 'handoff') {
+    if (!args.job) throw new Error('--job is required')
+    if (!args.agent) throw new Error('--agent is required')
+    const text = await resolveText(args, 'handoff summary')
+    const job = await resolveJob(args.job)
+    await apiPatch(`/jobs/${job.id}`, { handoffSummary: text })
+    console.log(`Handoff summary written to job #${job.refNum}.`)
     return
   }
 

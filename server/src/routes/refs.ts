@@ -15,7 +15,7 @@ async function resolveRefs(jobId: string) {
       return {
         ...ref,
         targetJob: targetJob
-          ? { id: targetJob.id, refNum: targetJob.refNum, title: targetJob.title, artifact: targetJob.artifact }
+          ? { id: targetJob.id, refNum: targetJob.refNum, title: targetJob.title, artifact: targetJob.artifact, handoffSummary: targetJob.handoffSummary }
           : null,
       }
     }

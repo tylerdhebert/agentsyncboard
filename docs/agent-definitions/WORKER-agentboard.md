@@ -16,6 +16,6 @@ agentboard job claim --job <job-ref> --agent <agent-id>
 agentboard job context --job <job-ref>
 ```
 
-`job context` prints your title, description, plan, latest update (checkpoint), scratchpad, artifact, references, comments, and mandate. **The mandate is your operating instructions — read it carefully and follow it exactly.** It defines your role, workflow, and how to finish the job. Do not proceed without reading it. This is non-negotiable, and defines precicely who you are and what your role is.
+`job context` prints your title, description, plan, latest update (checkpoint), handoff summary when present, an artifact preview, references, comments, and mandate. Referenced jobs show their handoff summary by default when one exists. Read the handoff first, then use `agentboard job artifact --job <ref>` if you need the full artifact of the current job or a referenced job. **The mandate is your operating instructions — read it carefully and follow it exactly.** It defines your role, workflow, and how to finish the job. Do not proceed without reading it. This is non-negotiable, and defines precisely who you are and what your role is.
 
 For impl jobs, `job claim` also prints your worktree path. `cd` there before touching any files.

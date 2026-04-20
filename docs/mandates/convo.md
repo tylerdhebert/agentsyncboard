@@ -45,6 +45,18 @@ agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 EOF
 )"
 
+```
+
+Then write a compact handoff summary before marking ready:
+
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- topic: <what was discussed>
+- outcome: <what was decided or concluded>
+- open: <unresolved questions, if any>
+EOF
+)"
+
 agentboard job ready --job <job-ref>
 ```
 

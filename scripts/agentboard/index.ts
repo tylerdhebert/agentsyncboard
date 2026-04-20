@@ -20,7 +20,9 @@ Commands:
   agentboard job edit --job <ref> [--title "..."] [--description "..."]
   agentboard job plan --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job checkpoint --job <ref> --agent <id> "<text>" [--from-file <path>]
-  agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]
+  agentboard job artifact --job <ref>                                        (read)
+  agentboard job artifact --job <ref> --agent <id> "<text>" [--from-file <path>]  (write)
+  agentboard job handoff --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job comment --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job scratch --job <ref> --agent <id> "<text>" [--from-file <path>]
   agentboard job ready --job <ref>

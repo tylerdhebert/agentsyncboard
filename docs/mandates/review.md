@@ -79,6 +79,18 @@ Brief description of scope so the reader knows what was and wasn't checked.
 EOF
 )"
 
+```
+
+Then write a compact handoff summary before marking ready:
+
+```bash
+agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
+- verdict: APPROVE / REQUEST CHANGES
+- blocking: <must-fix item if requesting changes, otherwise omit>
+- scope: <what was reviewed>
+EOF
+)"
+
 agentboard job ready --job <job-ref>
 ```
 
@@ -89,7 +101,7 @@ agentboard job wait --job <job-ref>
 
 Your artifact must contain an explicit verdict of `Approve` or `Request Changes`. The system uses that accepted review verdict to either move the parent impl job forward toward merge or send it back to `in-progress`.
 
-If `requireReview` is set on the review job, your work is not accepted until the human leaves `LGTM` on the review job. Once accepted, the completed review job is attached back to the parent impl job as a reference.
+If `requireReview` is set on the review job, your work is not accepted until the human leaves `LGTM` on the review job.
 
 ---
 
