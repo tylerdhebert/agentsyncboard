@@ -101,6 +101,16 @@ Use --base feature/my-feature when creating impl sub-jobs.
 
 Store this branch name — all impl sub-jobs you create must use it as `--base`.
 
+Then immediately write a brief handoff summary. This makes the goal's intent available when it is attached as a ref to the first sub-job in the chain:
+
+```bash
+agentboard job handoff --job <goal-ref> --agent <agent-id> "$(cat <<'EOF'
+- goal: <one sentence: what needs to be built or done>
+- constraints: <key constraints or scope boundaries, if any>
+EOF
+)"
+```
+
 ---
 
 ## Step 2 — Decompose and create sub-jobs
@@ -159,7 +169,11 @@ agentboard job scratch --job <goal-ref> --agent <agent-id> \
 Workers call `job context` and attached references are expanded into that context. Job references show the referenced job's handoff summary when one exists, otherwise they fall back to the referenced artifact. File references inline file contents. Attach references **before** a worker claims the job.
 
 ```bash
-# Link another job's artifact as context
+# Always attach the goal to the first sub-job in the chain (analysis, plan, or arch)
+# so that worker inherits the stated intent directly
+agentboard ref add --job <first-sub-job-ref> --job-ref <goal-ref> --label "goal"
+
+# Link a completed upstream job's output to its downstream consumer
 agentboard ref add --job 44 --job-ref 43 --label "analysis to implement from"
 
 # Link a specific file on disk
@@ -170,7 +184,7 @@ agentboard ref list --job 44
 agentboard ref remove --job 44 --ref <ref-id>
 ```
 
-Attach refs after the dependency completes — if the artifact isn't written yet, nothing is inlined.
+Attach refs after the dependency completes — if neither handoffSummary nor artifact exists yet, the ref contributes no content.
 
 ---
 
@@ -204,6 +218,13 @@ agentboard job artifact --job <goal-ref> --agent <agent-id> \
   "# Summary
 
 Completed X, Y, Z. Key decisions: ..."
+
+agentboard job handoff --job <goal-ref> --agent <agent-id> "$(cat <<'EOF'
+- completed: <what was built, one sentence>
+- impl: <approved branch(es) ready for merge, if any>
+- decisions: <key decisions made, if notable>
+EOF
+)"
 
 agentboard job ready --job <goal-ref>
 ```

@@ -35,6 +35,16 @@ Use --base feature/my-feature when creating impl sub-jobs.
 
 Store this branch name — all impl sub-jobs you create must use it as `--base`.
 
+Then immediately write a brief handoff summary. This makes the goal's intent available when it is attached as a ref to the first sub-job in the chain:
+
+```bash
+agentboard job handoff --job $GOAL --agent $AGENT_ID "$(cat <<'EOF'
+- goal: <one sentence: what needs to be built or done>
+- constraints: <key constraints or scope boundaries, if any>
+EOF
+)"
+```
+
 ---
 
 ## Step 2 — Decompose and create sub-jobs
@@ -98,7 +108,11 @@ agentboard job checkpoint --job $GOAL --agent $AGENT_ID \
 Workers call `job context` and attached references are expanded into that context. Job references show the referenced job's handoff summary when one exists, otherwise they fall back to the referenced artifact. File references inline file contents. Attach references **before** a worker claims the job.
 
 ```bash
-# Link another job's artifact as context (e.g. give #44 the output of #43)
+# Always attach the goal to the first sub-job in the chain (analysis, plan, or arch)
+# so that worker inherits the stated intent directly
+agentboard ref add --job <first-sub-job-ref> --job-ref $GOAL --label "goal"
+
+# Link a completed upstream job's output to its downstream consumer
 agentboard ref add --job 44 --job-ref 43 --label "analysis to implement from"
 
 # Link a specific file on disk
@@ -160,6 +174,13 @@ agentboard job artifact --job $GOAL --agent $AGENT_ID \
   "# Summary
 
 Completed X, Y, Z. Key decisions: ..."
+
+agentboard job handoff --job $GOAL --agent $AGENT_ID "$(cat <<'EOF'
+- completed: <what was built, one sentence>
+- impl: <approved branch(es) ready for merge, if any>
+- decisions: <key decisions made, if notable>
+EOF
+)"
 
 agentboard job ready --job $GOAL
 ```
