@@ -1,4 +1,4 @@
-> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+> **PowerShell:** Use `--from-file` for any content longer than a single short line — comments included. Write temp files with `Out-File -Encoding utf8NoBOM` to avoid encoding issues. Actual newlines in the file are preserved; `\n` escape sequences are not rendered.
 
 # Implementation Job Mandate
 
@@ -91,16 +91,17 @@ Summarize what you built:
 
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
-## Summary
+## What was built
 
-1-2 sentences: what was implemented and any significant decision made.
+One section per logical piece of work. Lead each section with a plain-English sentence describing what the feature or change *does* from a user or system perspective — not what files changed. Follow with the relevant file paths.
 
-## Changes
-- `path/to/file.ts` — what changed and why
-- `path/to/other.ts` — what changed and why
+Example:
+**Reveal on click** — when the user clicks a job in the needs-attention popover, the sidebar expands all ancestor jobs and folders and scrolls that job into view.
+- `client/src/components/JobTree.tsx` — useEffect watches revealJobId, uncollapses ancestors, scrolls after render
+- `client/src/store/index.ts` — added revealJobId/setRevealJobId
 
 ## Notes
-Any caveats, deferred work, or decisions made.
+Caveats, deferred work, or decisions worth flagging.
 EOF
 )"
 
@@ -110,9 +111,9 @@ Then write a compact handoff summary before marking ready:
 
 ```bash
 agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
-- built: <what was implemented, one sentence>
-- files: <key files changed>
-- notes: <caveats or deferred items, if any>
+- built: <what was implemented and what it does — include the user-facing or system-level effect, not just the file names>
+- decision: <any significant choice made during impl that wasn't in the plan, and why — omit if nothing notable>
+- caveat: <anything a reviewer should know going in: shortcuts taken, assumptions that held, known rough edges — omit if none>
 EOF
 )"
 

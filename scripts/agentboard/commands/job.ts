@@ -125,7 +125,8 @@ async function resolveText(args: ReturnType<typeof parseArgs>, name: string): Pr
   if (args['from-file']) {
     const filePath = args['from-file'] as string
     try {
-      return (await Bun.file(filePath).text()).trimEnd()
+      const raw = await Bun.file(filePath).text()
+      return raw.replace(/^﻿/, '').trimEnd()
     } catch {
       throw new Error(`Could not read file: ${filePath}`)
     }

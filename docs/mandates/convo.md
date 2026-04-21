@@ -1,4 +1,4 @@
-> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+> **PowerShell:** Use `--from-file` for any content longer than a single short line — comments included. Write temp files with `Out-File -Encoding utf8NoBOM` to avoid encoding issues. Actual newlines in the file are preserved; `\n` escape sequences are not rendered.
 
 # Convo Job Mandate
 

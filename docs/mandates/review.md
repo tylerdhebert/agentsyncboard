@@ -1,4 +1,4 @@
-> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+> **PowerShell:** Use `--from-file` for any content longer than a single short line — comments included. Write temp files with `Out-File -Encoding utf8NoBOM` to avoid encoding issues. Actual newlines in the file are preserved; `\n` escape sequences are not rendered.
 
 # Review Job Mandate
 
@@ -58,24 +58,32 @@ Review dimensions to consider (adapt to the job type being reviewed):
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Verdict
 
-**Approve** / **Request Changes** / **Blocking Issue Found**
+**Approve** / **Request Changes**
 
-One sentence summary of the overall assessment.
+One sentence overall assessment.
 
-## Findings
+## What was flagged and why
+
+One section per meaningful finding. Lead with what the problem *means* in practice — not just where the code is. Follow with the location.
 
 ### Must Fix
-- `path/to/file:line` — description of the problem and why it matters
+
+Example:
+**Null return in error path** — when the fetch helper fails it returns null, but every caller expects an empty array. Any page that hits this error path will crash instead of showing an empty state.
+- `client/src/api/client.ts:88`
 
 ### Should Fix
-- description
+
+Example:
+**Missing loading state** — the button stays enabled while the request is in flight, so the user can submit twice. Low risk but worth a fix before ship.
+- `client/src/components/Form.tsx:34`
 
 ### Suggestions (optional)
-- non-blocking observations
+Non-blocking observations.
 
 ## What Was Reviewed
 
-Brief description of scope so the reader knows what was and wasn't checked.
+Brief description of scope so the reader knows what wasn't checked.
 EOF
 )"
 
@@ -86,8 +94,9 @@ Then write a compact handoff summary before marking ready:
 ```bash
 agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 - verdict: APPROVE / REQUEST CHANGES
-- blocking: <must-fix item if requesting changes, otherwise omit>
-- scope: <what was reviewed>
+- blocking: <if requesting changes: what specifically must be fixed and why it matters — enough for the impl agent to act without reading the full artifact>
+- concern: <a should-fix or notable observation worth flagging even on approve — omit if none>
+- scope: <what was and wasn't checked, so the orchestrator knows if anything was skipped>
 EOF
 )"
 

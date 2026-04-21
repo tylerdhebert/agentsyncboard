@@ -13,7 +13,7 @@ Job refs accept `42`, `#42`, or the full UUID interchangeably. Use your agent ID
 
 ## agentboard CLI Reference
 
-> **Shell preference:** Use bash when available. Fall back to PowerShell only when bash is not accessible in your environment, and use `--from-file` for any multiline input when doing so.
+> **PowerShell:** Use `--from-file` for any content longer than a single short line — comments included. Write temp files with `Out-File -Encoding utf8NoBOM` to avoid encoding issues. Actual newlines in the file are preserved; `\n` escape sequences are not rendered.
 
 ```bash
 # ── Jobs ──────────────────────────────────────────────────────────────────────

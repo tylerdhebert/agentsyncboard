@@ -1,4 +1,4 @@
-> **Shell preference:** Use bash when available. Fall back to PowerShell with `--from-file` for multiline input if bash is not accessible.
+> **PowerShell:** Use `--from-file` for any content longer than a single short line — comments included. Write temp files with `Out-File -Encoding utf8NoBOM` to avoid encoding issues. Actual newlines in the file are preserved; `\n` escape sequences are not rendered.
 
 # Plan Job Mandate
 
@@ -81,13 +81,16 @@ Each task must be self-contained: an impl agent should be able to execute it wit
 
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
-## Approach
+## What we're doing and why
 
-1-2 sentences: what is being built and why this approach over the alternatives.
+Plain English. What problem is being solved, what's the approach, and why this over the alternatives. No file paths here — just the intent.
+
+Example:
+The sidebar has no way to surface jobs that need human attention. We're adding a popover button that lists jobs in review or waiting on input, sorted by recency. Clicking one will expand its parent jobs and folders in the tree and scroll it into view. We're using a store signal rather than prop-drilling so the tree can react without being wired to the button directly.
 
 ## Design decisions
 
-Key architectural or technical choices made during research:
+Key choices made during research:
 - [decided] <decision and rationale>
 - [assumed] <constraint this plan relies on>
 - [observed] <relevant fact about the existing system>
@@ -110,10 +113,10 @@ Then write a compact handoff summary:
 
 ```bash
 agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
-- approach: <one sentence>
-- decision: <key technical decision made>
-- tasks: <N tasks>
-- risk: <top risk or assumption to verify>
+- approach: <what we're building and why this way — include the core tradeoff or constraint that shaped the approach>
+- decision: <the most load-bearing technical choice made, and what was ruled out — e.g. "using store signal instead of prop-drilling so the tree doesn't need to know about the button">
+- assumption: <anything the impl agent must not violate for this plan to hold — omit if none>
+- risk: <what's most likely to go wrong or require revisiting during impl — omit if none>
 EOF
 )"
 
