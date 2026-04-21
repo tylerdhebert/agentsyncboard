@@ -71,15 +71,13 @@ agentboard repo list                    # list all repos with their IDs and path
 
 **Job types:**
 
-| type       | use for                                                        |
-|------------|----------------------------------------------------------------|
-| `analysis` | research, investigation, reading existing code                 |
-| `plan`     | task decomposition, ordered implementation steps               |
-| `impl`     | code changes in a worktree                                     |
-| `review`   | reviewing a branch or artifact from another job                |
-| `arch`     | technical architecture, system design, deep technical analysis |
-| `convo`    | structured back-and-forth conversation with the human          |
-| `goal`     | nested orchestration (large decompositions only)               |
+| type     | use for                                                                      |
+|----------|------------------------------------------------------------------------------|
+| `plan`   | research, design, and task decomposition — the planner reads the codebase, evaluates options, and produces an impl-ready task list |
+| `impl`   | code changes in a worktree                                                   |
+| `review` | reviewing a branch or artifact from another job                              |
+| `convo`  | structured back-and-forth conversation with the human                        |
+| `goal`   | nested orchestration (large decompositions only)                             |
 
 ---
 
@@ -118,12 +116,12 @@ EOF
 One job per independent unit of work.
 
 ```bash
-# Analysis or plan job (no repo/branch needed)
+# Plan job (no repo/branch needed) — planner does its own research and design
 agentboard job create \
-  --title "Analyze current auth flow" \
-  --type analysis \
+  --title "Plan JWT refresh implementation" \
+  --type plan \
   --parent <goal-ref> \
-  --description "Investigate the existing auth flow and document pain points."
+  --description "Research the existing auth flow and produce an impl-ready task list."
 
 # Impl job — use the goal's integration branch as --base, not the repo's default
 agentboard job create \
@@ -152,7 +150,7 @@ Checkpoint after decomposing:
 
 ```bash
 agentboard job checkpoint --job <goal-ref> --agent <agent-id> \
-  "Decomposed into 3 sub-jobs: #43 (analysis), #44 (impl auth), #45 (impl refresh)."
+  "Decomposed into 3 sub-jobs: #43 (plan), #44 (impl auth), #45 (impl refresh)."
 ```
 
 Use `job scratch` to track working state that doesn't belong in checkpoints — repo IDs discovered, pending sub-job IDs, mid-decomposition notes, or any friction experienced during job execution by you or your agents:
@@ -169,12 +167,12 @@ agentboard job scratch --job <goal-ref> --agent <agent-id> \
 Workers call `job context` and attached references are expanded into that context. Job references show the referenced job's handoff summary when one exists, otherwise they fall back to the referenced artifact. File references inline file contents. Attach references **before** a worker claims the job.
 
 ```bash
-# Always attach the goal to the first sub-job in the chain (analysis, plan, or arch)
+# Always attach the goal to the first sub-job in the chain
 # so that worker inherits the stated intent directly
 agentboard ref add --job <first-sub-job-ref> --job-ref <goal-ref> --label "goal"
 
 # Link a completed upstream job's output to its downstream consumer
-agentboard ref add --job 44 --job-ref 43 --label "analysis to implement from"
+agentboard ref add --job 44 --job-ref 43 --label "plan to implement from"
 
 # Link a specific file on disk
 agentboard ref add --job 44 --file /path/to/spec.md --label "API spec"
@@ -265,18 +263,15 @@ echo "Human chose: $answer"
 ## Typical chains
 
 **Default:**
-`analysis → plan → impl(s) → review`
-
-**Lean (simple task):**
-`plan → impl → review`
-
-**Complex / cross-repo:**
-`analysis → arch → plan → impl(s) → review`
+`plan → impl(s) → review`
 
 **Conversation-first (ambiguous requirements):**
-`convo → analysis → plan → impl(s) → review`
+`convo → plan → impl(s) → review`
 
-Deviate as the goal requires. Spawn a `convo` job any time requirements are unclear enough that you need back-and-forth with the human before planning.
+**Large / cross-repo:**
+`plan → goal(s) → impl(s) → review`
+
+Deviate as the goal requires. Spawn a `convo` job any time requirements are unclear enough that you need back-and-forth with the human before planning. The planner is expected to do its own codebase research — do not create a separate job for investigation that a single plan agent can do itself.
 
 ---
 

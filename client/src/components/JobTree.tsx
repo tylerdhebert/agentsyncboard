@@ -37,8 +37,6 @@ const TYPE_COLOR: Record<Job['type'], string> = {
   goal: 'text-sky-400',
   plan: 'text-violet-400',
   review: 'text-fuchsia-400',
-  analysis: 'text-slate-400',
-  arch: 'text-cyan-400',
   convo: 'text-orange-400',
   impl: 'text-emerald-400',
 }

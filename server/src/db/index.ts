@@ -19,10 +19,11 @@ function shouldMigrateJobTypes(tableName: 'jobs' | 'job_type_mandates'): boolean
     .get(tableName)
 
   const sql = row?.sql ?? ''
+  // Migrate if the schema still lists removed types, or if jobs is missing 'approved' status
   if (tableName === 'jobs') {
-    return !sql.includes("'arch'") || !sql.includes("'convo'") || !sql.includes("'approved'")
+    return sql.includes("'analysis'") || sql.includes("'arch'") || !sql.includes("'approved'")
   }
-  return !sql.includes("'arch'") || !sql.includes("'convo'")
+  return sql.includes("'analysis'") || sql.includes("'arch'")
 }
 
 function rebuildJobsTable(): void {
@@ -36,7 +37,7 @@ function rebuildJobsTable(): void {
       CREATE TABLE jobs (
         id TEXT PRIMARY KEY,
         ref_num INTEGER NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('impl','plan','review','analysis','goal','arch','convo')),
+        type TEXT NOT NULL CHECK(type IN ('impl','plan','review','goal','convo')),
         title TEXT NOT NULL,
         description TEXT,
         repo_id TEXT REFERENCES repos(id),
@@ -70,7 +71,9 @@ function rebuildJobsTable(): void {
         conflicted_at, conflict_details, completed_at, created_at, updated_at
       )
       SELECT
-        id, ref_num, type, title, description, repo_id, branch_name, base_branch,
+        id, ref_num,
+        CASE WHEN type IN ('analysis','arch') THEN 'plan' ELSE type END,
+        title, description, repo_id, branch_name, base_branch,
         parent_job_id, folder_id, status, agent_id, auto_merge, require_review,
         plan, latest_update, artifact, scratchpad, handoff_summary, blocked_reason,
         conflicted_at, conflict_details, completed_at, created_at, updated_at
@@ -98,7 +101,7 @@ function rebuildJobTypeMandatesTable(): void {
     sqlite.run(`
       CREATE TABLE job_type_mandates (
         id TEXT PRIMARY KEY,
-        type TEXT NOT NULL CHECK(type IN ('impl','plan','review','analysis','goal','arch','convo')),
+        type TEXT NOT NULL CHECK(type IN ('impl','plan','review','goal','convo')),
         repo_id TEXT REFERENCES repos(id) ON DELETE CASCADE,
         file_path TEXT NOT NULL,
         updated_at TEXT NOT NULL
@@ -108,6 +111,7 @@ function rebuildJobTypeMandatesTable(): void {
       INSERT INTO job_type_mandates (id, type, repo_id, file_path, updated_at)
       SELECT id, type, repo_id, file_path, updated_at
       FROM job_type_mandates_old
+      WHERE type NOT IN ('analysis','arch')
     `)
     sqlite.run('DROP TABLE job_type_mandates_old')
     sqlite.run(`
@@ -151,7 +155,7 @@ export function initDb(): void {
     CREATE TABLE IF NOT EXISTS jobs (
       id TEXT PRIMARY KEY,
       ref_num INTEGER NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('impl','plan','review','analysis','goal','arch','convo')),
+      type TEXT NOT NULL CHECK(type IN ('impl','plan','review','goal','convo')),
       title TEXT NOT NULL,
       description TEXT,
       repo_id TEXT REFERENCES repos(id),
@@ -242,7 +246,7 @@ export function initDb(): void {
   sqlite.run(`
     CREATE TABLE IF NOT EXISTS job_type_mandates (
       id TEXT PRIMARY KEY,
-      type TEXT NOT NULL CHECK(type IN ('impl','plan','review','analysis','goal','arch','convo')),
+      type TEXT NOT NULL CHECK(type IN ('impl','plan','review','goal','convo')),
       repo_id TEXT REFERENCES repos(id) ON DELETE CASCADE,
       file_path TEXT NOT NULL,
       updated_at TEXT NOT NULL

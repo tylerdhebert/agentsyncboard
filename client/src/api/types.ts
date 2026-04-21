@@ -1,4 +1,4 @@
-export type JobType = 'impl' | 'plan' | 'review' | 'analysis' | 'goal' | 'arch' | 'convo'
+export type JobType = 'impl' | 'plan' | 'review' | 'goal' | 'convo'
 export type JobStatus = 'open' | 'in-progress' | 'blocked' | 'in-review' | 'approved' | 'done'
 export type InputType = 'yesno' | 'choice' | 'text'
 export type InputStatus = 'pending' | 'answered' | 'timeout'

@@ -203,7 +203,7 @@ function RepoCard({ repo }: { repo: Repo }) {
   )
 }
 
-const JOB_TYPES = ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] as const
+const JOB_TYPES = ['impl', 'plan', 'review', 'goal', 'convo'] as const
 
 function JobInstructionsTab({ repos }: { repos: Repo[] }) {
   const queryClient = useQueryClient()

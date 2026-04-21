@@ -21,7 +21,7 @@ export const folders = sqliteTable('folders', {
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
   refNum: integer('ref_num').notNull(),
-  type: text('type', { enum: ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] }).notNull(),
+  type: text('type', { enum: ['impl', 'plan', 'review', 'goal', 'convo'] }).notNull(),
   title: text('title').notNull(),
   description: text('description'),
   repoId: text('repo_id').references(() => repos.id),
@@ -102,7 +102,7 @@ export const jobReferences = sqliteTable('job_references', {
 
 export const jobTypeMandates = sqliteTable('job_type_mandates', {
   id: text('id').primaryKey(),
-  type: text('type', { enum: ['impl', 'plan', 'review', 'analysis', 'goal', 'arch', 'convo'] }).notNull(),
+  type: text('type', { enum: ['impl', 'plan', 'review', 'goal', 'convo'] }).notNull(),
   repoId: text('repo_id').references(() => repos.id, { onDelete: 'cascade' }),
   filePath: text('file_path').notNull(),
   updatedAt: text('updated_at').notNull(),

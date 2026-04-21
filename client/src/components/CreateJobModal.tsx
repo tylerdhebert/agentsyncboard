@@ -6,14 +6,12 @@ import { queryKeys } from '../api/keys'
 import { useStore } from '../store'
 import type { Repo } from '../api/types'
 
-type JobType = 'goal' | 'plan' | 'review' | 'analysis' | 'arch' | 'convo' | 'impl'
+type JobType = 'goal' | 'plan' | 'review' | 'convo' | 'impl'
 
 const JOB_TYPES: { id: JobType; label: string; description: string; color: string }[] = [
   { id: 'goal', label: 'goal', description: 'high-level objective', color: 'border-sky-400/30 bg-sky-400/8 text-sky-300' },
-  { id: 'plan', label: 'plan', description: 'planning and design work', color: 'border-violet-400/30 bg-violet-400/8 text-violet-300' },
+  { id: 'plan', label: 'plan', description: 'planning, research, and design', color: 'border-violet-400/30 bg-violet-400/8 text-violet-300' },
   { id: 'review', label: 'review', description: 'code or artifact review', color: 'border-fuchsia-400/30 bg-fuchsia-400/8 text-fuchsia-300' },
-  { id: 'analysis', label: 'analysis', description: 'research and investigation', color: 'border-slate-400/30 bg-slate-400/8 text-slate-300' },
-  { id: 'arch', label: 'arch', description: 'architecture and system design', color: 'border-cyan-400/30 bg-cyan-400/8 text-cyan-300' },
   { id: 'convo', label: 'convo', description: 'conversation, discovery, or alignment', color: 'border-orange-400/30 bg-orange-400/8 text-orange-300' },
   { id: 'impl', label: 'impl', description: 'implementation with worktree', color: 'border-emerald-400/30 bg-emerald-400/8 text-emerald-300' },
 ]

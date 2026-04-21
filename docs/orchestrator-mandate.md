@@ -51,23 +51,21 @@ EOF
 
 One job per independent unit of work. Job types:
 
-| type       | use for                                          |
-|------------|--------------------------------------------------|
-| `analysis` | research, investigation, reading existing code   |
-| `plan`     | task decomposition, ordered implementation steps |
-| `impl`     | code changes in a worktree                       |
-| `review`   | reviewing a branch or artifact from another job  |
-| `goal`     | nested orchestration (large decompositions only) |
-| `arch`     | technical architecture, system design, deep technical analysis |
-| `convo`    | structured conversation with the human to gather input or make decisions |
+| type     | use for                                                                      |
+|----------|------------------------------------------------------------------------------|
+| `plan`   | research, design, and task decomposition — the planner reads the codebase, evaluates options, and produces an impl-ready task list |
+| `impl`   | code changes in a worktree                                                   |
+| `review` | reviewing a branch or artifact from another job                              |
+| `convo`  | structured conversation with the human to gather input or make decisions     |
+| `goal`   | nested orchestration (large decompositions only)                             |
 
 ```bash
-# Analysis or plan job (no repo/branch needed)
+# Plan job (no repo/branch needed) — planner does its own research and design
 agentboard job create \
-  --title "Analyze current auth flow" \
-  --type analysis \
+  --title "Plan JWT refresh implementation" \
+  --type plan \
   --parent $GOAL \
-  --description "Investigate the existing auth flow and document pain points."
+  --description "Research the existing auth flow and produce an impl-ready task list."
 
 # Impl job — use the goal's integration branch as --base, not the repo's default
 agentboard job create \
@@ -98,7 +96,7 @@ Checkpoint after decomposing:
 
 ```bash
 agentboard job checkpoint --job $GOAL --agent $AGENT_ID \
-  "Decomposed into 3 sub-jobs: #43 (analysis), #44 (impl auth), #45 (impl refresh)."
+  "Decomposed into 3 sub-jobs: #43 (plan), #44 (impl auth), #45 (impl refresh)."
 ```
 
 ---
@@ -108,12 +106,12 @@ agentboard job checkpoint --job $GOAL --agent $AGENT_ID \
 Workers call `job context` and attached references are expanded into that context. Job references show the referenced job's handoff summary when one exists, otherwise they fall back to the referenced artifact. File references inline file contents. Attach references **before** a worker claims the job.
 
 ```bash
-# Always attach the goal to the first sub-job in the chain (analysis, plan, or arch)
+# Always attach the goal to the first sub-job in the chain
 # so that worker inherits the stated intent directly
 agentboard ref add --job <first-sub-job-ref> --job-ref $GOAL --label "goal"
 
 # Link a completed upstream job's output to its downstream consumer
-agentboard ref add --job 44 --job-ref 43 --label "analysis to implement from"
+agentboard ref add --job 44 --job-ref 43 --label "plan to implement from"
 
 # Link a specific file on disk
 agentboard ref add --job 44 --file /path/to/spec.md --label "API spec"
@@ -144,7 +142,7 @@ agentboard job list --parent $GOAL --status approved
 agentboard job list --parent $GOAL --status done
 
 # Filter by type
-agentboard job list --parent $GOAL --type analysis
+agentboard job list --parent $GOAL --type plan
 agentboard job list --parent $GOAL --type impl
 
 # Review jobs under a specific impl job

@@ -2,10 +2,11 @@
 
 # Plan Job Mandate
 
-You are producing a plan or design document. You do not write code. Your deliverable is a clear, actionable artifact that an implementation agent (or human) can execute from.
+You are producing a plan. You do not write code. Your deliverable is a clear, actionable artifact that an implementation agent (or human) can execute from.
+
+Research and architectural decisions are part of this job — you are expected to read the codebase, evaluate options, and commit to a technical approach before writing the plan. Do not create sub-jobs for research you can do yourself.
 
 ---
-
 
 ## Step 1 — Claim and read context
 
@@ -14,20 +15,36 @@ agentboard job claim --job <job-ref> --agent <agent-id>
 agentboard job context --job <job-ref>
 ```
 
-Read all references. If an analysis job is attached, its artifact contains findings you should build your plan from — do not re-investigate what the analysis already covered.
+Read all references. If upstream jobs are attached, build from their findings — do not re-investigate what they already covered.
 
 ---
 
-## Step 2 — Research
+## Step 2 — Research and design
 
-Explore the codebase or system as needed. You may read files freely, but do not modify anything. Post a checkpoint when you have enough context to start drafting:
+Explore the codebase or system as needed. Read files freely, but do not modify anything.
+
+As you investigate, post checkpoints for meaningful findings so the human can redirect you early:
 
 ```bash
 agentboard job checkpoint --job <job-ref> --agent <agent-id> \
-  "Finished reading context. Found X. Starting draft."
+  "Found X in path/to/file.ts:42. Starting draft."
 ```
 
-If you hit ambiguity that would meaningfully change the plan, ask before drafting:
+If the task requires choosing between approaches, evaluate at least two before committing. Post your options as a checkpoint:
+
+```bash
+agentboard job checkpoint --job <job-ref> --agent <agent-id> "Evaluating options:
+
+Option A: [name] — [one line]
+  Pro: ...  Con: ...
+
+Option B: [name] — [one line]
+  Pro: ...  Con: ...
+
+Leaning toward A because ..."
+```
+
+If a key decision requires human input before you can proceed:
 
 ```bash
 answer=$(agentboard input request --job <job-ref> --agent <agent-id> \
@@ -60,18 +77,25 @@ agentboard job checkpoint --job <job-ref> --agent <agent-id> "Draft plan:
 
 ## Step 4 — Write artifact and mark ready
 
-Each task must be self-contained: an impl agent should be able to execute it without reading the arch or analysis artifacts. If a task requires an assumption, state it inline. Max 8 tasks — if more are needed, the scope should be split into multiple impl jobs.
+Each task must be self-contained: an impl agent should be able to execute it without reading prior jobs in the chain. If a task relies on an assumption, state it inline. Label claims about the existing system with their epistemic status: `[observed]` (directly seen in code or config), `[inferred]` (reasoned from evidence), `[assumed]` (design assumption that must hold). Max 8 tasks — if more are needed, split the scope into multiple impl jobs.
 
 ```bash
 agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 ## Approach
 
-1-2 sentences: what is being built and why this approach.
+1-2 sentences: what is being built and why this approach over the alternatives.
+
+## Design decisions
+
+Key architectural or technical choices made during research:
+- [decided] <decision and rationale>
+- [assumed] <constraint this plan relies on>
+- [observed] <relevant fact about the existing system>
 
 ## Tasks
 
 1. In `path/to/file.ts` — <specific change: what to add/modify/remove and why>
-   [assumes] <any constraint the impl agent must know, e.g. "do not change the public API">
+   [assumes] <any constraint the impl agent must know>
 2. In `path/to/other.ts` — <specific change>
 ...
 
@@ -80,15 +104,15 @@ agentboard job artifact --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 - <known unknown or deferred decision that could block impl>
 EOF
 )"
-
 ```
 
-Then write a compact handoff summary — this is what downstream agents inherit by default, not the full artifact above:
+Then write a compact handoff summary:
 
 ```bash
 agentboard job handoff --job <job-ref> --agent <agent-id> "$(cat <<'EOF'
 - approach: <one sentence>
-- tasks: <N tasks, one per line>
+- decision: <key technical decision made>
+- tasks: <N tasks>
 - risk: <top risk or assumption to verify>
 EOF
 )"
@@ -108,6 +132,7 @@ agentboard job wait --job <job-ref>
 1. **Read all references before drafting.** Don't plan blind.
 2. **Do not write code.** If you find yourself editing files, stop.
 3. **Be specific enough to hand off.** Vague plans produce blocked impl agents.
-4. **Surface risks explicitly.** A plan that hides hard parts isn't useful.
-5. **`job ready` is the only way to finish.**
-6. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.
+4. **Label epistemic status.** Claims about the existing system must be `[observed]`, `[inferred]`, or `[assumed]`.
+5. **Surface risks explicitly.** A plan that hides hard parts isn't useful.
+6. **`job ready` is the only way to finish.**
+7. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.

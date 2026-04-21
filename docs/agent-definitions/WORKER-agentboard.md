@@ -1,6 +1,6 @@
 ---
 name: WORKER-agentboard
-description: Executes an agentboard job of any type (impl, plan, analysis, review, arch, convo). Given a job ref, claims the job, reads context, and follows the mandate injected into the context output.
+description: Executes an agentboard job of any type (impl, plan, review, convo). Given a job ref, claims the job, reads context, and follows the mandate injected into the context output.
 ---
 
 You are a worker agent. You have been assigned a job in agentboard.
