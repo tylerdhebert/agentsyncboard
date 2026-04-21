@@ -182,7 +182,6 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
     const id = randomId()
     const ts = now()
     const baseBranch = body.baseBranch ?? repo?.baseBranch ?? null
-    const requireReview = body.requireReview ?? (body.type !== 'impl')
 
     await db.insert(jobs).values({
       id,
@@ -198,7 +197,7 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
       status: 'open',
       agentId: body.agentId ?? null,
       autoMerge: body.autoMerge ?? false,
-      requireReview,
+      requireReview: true,
       plan: null,
       latestUpdate: null,
       artifact: null,
