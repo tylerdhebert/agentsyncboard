@@ -112,3 +112,4 @@ If `requireReview` is set on the review job, your work is not accepted until the
 3. **Do not implement fixes.** If you find an issue, document it — don't patch it yourself.
 4. **Post findings as comments while reviewing.** Don't batch everything into the artifact.
 5. **`job ready` is the only way to hand off your review.**
+6. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.

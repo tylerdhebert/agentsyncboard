@@ -173,4 +173,5 @@ The job and branch are reused across as many review/fix cycles as needed. Child 
 4. **Check comments at every checkpoint.** Human feedback arrives there.
 5. **No failing builds at ready time.**
 6. **`job ready` is the only way to hand off your turn.**
-7. **Don't create sub-jobs or new jobs.** If the task is too large, block and ask. If review requests changes, fix in this job.
+7. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.
+8. **Don't create sub-jobs or new jobs.** If the task is too large, block and ask. If review requests changes, fix in this job.

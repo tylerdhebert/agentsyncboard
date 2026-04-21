@@ -102,6 +102,8 @@ agentboard input request --job <job-ref> --agent <agent-id> \
 
 `--choices` format: `value:Label` pairs, pipe-separated (`|`). `value` is what gets returned; `Label` is what the human sees. Use `|` not `,` — labels often contain commas.
 
+Add `--allow-free-text` to a choice question to let the human type a custom answer instead of picking from the list.
+
 ---
 
 ## Using Comments vs. Input Requests
@@ -119,3 +121,4 @@ Both appear in the conversation thread. Use `job comment` sparingly in convo job
 2. **One question at a time.** Don't fire multiple `input request` calls before reading the reply.
 3. **Timeout means wrap up.** Exit code 1 from `input request` means the human didn't respond — write your best summary with available information and call `job ready`.
 4. **The artifact is required.** Every convo job must end with a written summary artifact.
+5. **Always allow free-response for multiple choice inputs.** Your choices are not exhaustive. Always allow the user to respond freely with the `--allow-free-text` flag when sending a multiple choice input request.

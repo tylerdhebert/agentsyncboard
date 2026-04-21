@@ -251,3 +251,5 @@ agentboard job worktree --job <impl-ref>
 4. **Checkpoint after every structural decision** — decomposition, re-decomposition, unblocking a sub-job.
 5. **`job ready` is mandatory.** The goal is not done until you call it.
 6. **`input request` blocks your process.** Do not call it inside a polling loop without intent — it will not return until the human responds.
+7. **Never end your turn early.** If you are spawning subagents, you must wait for them to complete before ending your turn. Your job is not done until the user's task is complete.
+8. **Infer user's intent.** If a user asks you to create a job, they likely want you to spawn the worker to own that job too. Prefer proactively starting work on a task rather than ending your turn and asking the user if they want to continue.

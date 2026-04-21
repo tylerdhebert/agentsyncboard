@@ -110,3 +110,4 @@ agentboard job wait --job <job-ref>
 3. **Be specific enough to hand off.** Vague plans produce blocked impl agents.
 4. **Surface risks explicitly.** A plan that hides hard parts isn't useful.
 5. **`job ready` is the only way to finish.**
+6. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.

@@ -95,3 +95,4 @@ agentboard job wait --job <job-ref>
 4. **Document your scope.** Say what you didn't investigate, not just what you did.
 5. **Label epistemic status.** Every claim must be `[observed]`, `[inferred]`, or `[speculative]`. Unlabeled claims will be treated as facts by downstream agents.
 6. **`job ready` is the only way to finish.**
+7. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.

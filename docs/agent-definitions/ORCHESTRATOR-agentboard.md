@@ -316,4 +316,7 @@ Create that review job with `--parent <impl-ref>` as well, so the board shows th
 3. **Never do implementation yourself.** If you find yourself writing code or detailed analysis, stop and create a sub-job instead.
 4. **Checkpoint after every structural decision** — decomposition, re-decomposition, unblocking.
 5. **`job ready` is mandatory.** The goal is not done until you call it.
-6. **`input request` blocks your process.** Do not call it inside a polling loop without intent.
+6. **Reattach when waiting on review.** If your CLI times out when waiting for human review, you are required to reattach to resume waiting. Your job is not done until the user completes the review. The user may request changes that require you to revisit your work.
+7. **`input request` blocks your process.** Do not call it inside a polling loop without intent.
+8. **Never end your turn early.** If you are spawning subagents, you must wait for them to complete before ending your turn. Your job is not done until the user's task is complete.
+9. **Infer user's intent.** If a user asks you to create a job, they likely want you to spawn the worker to own that job too. Prefer proactively starting work on a task rather than ending your turn and asking the user if they want to continue.
