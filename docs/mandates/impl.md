@@ -165,6 +165,23 @@ The job and branch are reused across as many review/fix cycles as needed. Child 
 
 ---
 
+## Code style
+
+Write code that trusts its context. Defensive patterns add noise without value:
+
+- **No guards for things already guaranteed.** If the type system or surrounding logic makes a state impossible, don't check for it. `if (!user) return` when `user` is always set is dead weight.
+- **No try/catch unless the plan explicitly calls for it.** If error handling isn't in scope, don't add it. Wrapping code in try/catch silently buries failures that should surface loudly.
+- **Inline types for one-off shapes.** If a type is only used in one place, write it inline — don't create a named export for it.
+- **No type assertion helpers.** Avoid `assertIsString(x)`, `isNumericType(val: unknown)`, and similar wrappers. Use type assertions directly (`x as Foo`) when needed, or restructure so they aren't needed. Reserve runtime validation for true external boundaries: API responses, user input, CLI args.
+- **Null coalescing and optional chaining are fine.** `x?.y ?? z` is idiomatic — not a sign of missing validation.
+- **No abstraction layers unless the plan calls for them.** Don't introduce interfaces, wrapper classes, or indirection because it feels cleaner. If the repo already has a pattern (e.g. a repository layer), follow it — but don't extend it beyond what the task requires.
+
+**If the codebase is C#, also avoid:**
+- Validating values the framework or ORM already guarantees — `ArgumentNullException.ThrowIfNull` and guard clauses belong at public API surfaces, not internal methods
+- Defensive LINQ — `.Where(x => x != null)` on collections that can't contain nulls, or `.ToList()` everywhere to "avoid multiple enumeration" on things that are already materialized
+
+---
+
 ## Rules
 
 1. **Claim before touching files.**
