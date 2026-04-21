@@ -28,6 +28,9 @@ type Store = {
 
   wsConnected: boolean
   setWsConnected: (connected: boolean) => void
+
+  revealJobId: string | null
+  setRevealJobId: (id: string | null) => void
 }
 
 export const useStore = create<Store>(set => ({
@@ -62,4 +65,7 @@ export const useStore = create<Store>(set => ({
 
   wsConnected: false,
   setWsConnected: connected => set({ wsConnected: connected }),
+
+  revealJobId: null,
+  setRevealJobId: id => set({ revealJobId: id }),
 }))

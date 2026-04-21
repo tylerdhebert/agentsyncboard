@@ -349,6 +349,18 @@ export const jobsRoutes = new Elysia({ prefix: '/jobs' })
         .where(eq(jobs.id, params.id))
     }
 
+    // When requireReview is false, skip the in-review state entirely and
+    // advance straight to the terminal state without notifying the user.
+    if (!job.requireReview) {
+      const terminalStatus = job.type === 'impl' ? 'approved' : 'done'
+      await db.update(jobs)
+        .set({ status: terminalStatus, completedAt: now(), reviewOutcome: 'approved', updatedAt: now() })
+        .where(eq(jobs.id, params.id))
+      const updated = db.select().from(jobs).where(eq(jobs.id, params.id)).get()!
+      wsManager.broadcast('job:updated', updated)
+      return { status: terminalStatus, job: updated }
+    }
+
     await db.update(jobs)
       .set({ status: 'in-review', reviewOutcome: null, updatedAt: now() })
       .where(eq(jobs.id, params.id))

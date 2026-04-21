@@ -37,6 +37,7 @@ export type Job = {
   agentId: string | null
   autoMerge: boolean
   requireReview: boolean
+  reviewOutcome: string | null
   plan: string | null
   latestUpdate: string | null
   artifact: string | null

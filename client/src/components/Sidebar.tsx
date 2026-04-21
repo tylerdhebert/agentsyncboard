@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { JobTree } from './JobTree'
 import { CreateJobModal } from './CreateJobModal'
 import { CreateFolderModal } from './CreateFolderModal'
+import { NeedsAttentionButton } from './NeedsAttentionButton'
 import { playChime } from '../lib/notify'
 
 const SIDEBAR_WIDTH_KEY = 'sidebar-width'
@@ -144,6 +145,8 @@ export function Sidebar() {
         >
           <Plus className="h-4 w-4" />
         </button>
+
+        <NeedsAttentionButton />
 
         {useOverflowMenu ? (
           <div ref={overflowMenuRef} className="relative flex-shrink-0">

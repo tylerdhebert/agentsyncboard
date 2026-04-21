@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
 import { queryKeys } from '../api/keys'
@@ -85,6 +85,7 @@ function JobRow({
         setSelectedJobId(job.id)
         setActiveTab('detail')
       }}
+      data-job-id={job.id}
       style={{ marginLeft: depth * 16, cursor: isDragging ? 'grabbing' : 'pointer' }}
       className={[
         'group relative flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition select-none',
@@ -99,8 +100,9 @@ function JobRow({
         />
       )}
 
-      {/* Chevron + status dot column */}
-      <div className="flex flex-shrink-0 flex-col items-center gap-1 pt-[3px]">
+      {/* Ref # + chevron + status dot column */}
+      <div className="flex flex-shrink-0 flex-col items-center gap-0.5 pt-[1px]">
+        <span className="font-mono text-[10px] leading-none text-[var(--dim)]">#{job.refNum}</span>
         {hasChildren ? (
           <span
             onClick={(e: React.MouseEvent) => { e.stopPropagation(); onToggle?.() }}
@@ -141,29 +143,26 @@ function JobRow({
         )}
       </div>
 
-      {/* Ref number + badges column */}
-      <div className="flex flex-shrink-0 flex-col items-end gap-1">
-        <span className="font-mono text-[11px] text-[var(--dim)]">#{job.refNum}</span>
-        {showBadges && (
-          <div className="flex flex-col items-end gap-0.5">
-            {job.status === 'blocked' && (
-              <span title="blocked" className="text-rose-400">
-                <Octagon className="h-3 w-3" />
-              </span>
-            )}
-            {hasPendingInput && (
-              <span title="waiting for input" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-amber-400/20 font-bold text-[8px] leading-none text-amber-400">
-                <TriangleAlert className="h-3 w-3" />
-              </span>
-            )}
-            {job.conflictedAt && (
-              <span title="merge conflict" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-orange-400/20 font-bold text-[8px] leading-none text-orange-400">
-                <GitMergeConflict className="h-3 w-3" />
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Badges column */}
+      {showBadges && (
+        <div className="flex flex-shrink-0 flex-col items-end gap-0.5 pt-[3px]">
+          {job.status === 'blocked' && (
+            <span title="blocked" className="text-rose-400">
+              <Octagon className="h-3 w-3" />
+            </span>
+          )}
+          {hasPendingInput && (
+            <span title="waiting for input" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-amber-400/20 font-bold text-[8px] leading-none text-amber-400">
+              <TriangleAlert className="h-3 w-3" />
+            </span>
+          )}
+          {job.conflictedAt && (
+            <span title="merge conflict" className="flex h-[10px] w-[10px] items-center justify-center rounded-full bg-orange-400/20 font-bold text-[8px] leading-none text-orange-400">
+              <GitMergeConflict className="h-3 w-3" />
+            </span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -429,6 +428,9 @@ export function JobTree() {
   const [collapsedJobIds, setCollapsedJobIds] = useState<Set<string>>(new Set())
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(new Set())
 
+  const revealJobId = useStore(state => state.revealJobId)
+  const setRevealJobId = useStore(state => state.setRevealJobId)
+
   const queryClient = useQueryClient()
 
   const { data: jobs = [] } = useQuery<Job[]>({
@@ -450,6 +452,53 @@ export function JobTree() {
   })
 
   const pendingInputJobIds = new Set(pendingInputs.map((i: InputRequest) => i.jobId))
+
+  useEffect(() => {
+    if (!revealJobId || jobs.length === 0) return
+
+    // Collect ancestor job ids (parent chain)
+    const ancestorJobIds: string[] = []
+    let cur = jobs.find(j => j.id === revealJobId)
+    while (cur?.parentJobId) {
+      ancestorJobIds.push(cur.parentJobId)
+      cur = jobs.find(j => j.id === cur!.parentJobId)
+    }
+
+    // Collect ancestor folder ids — walk to root job first, since subjobs have folderId: null
+    const ancestorFolderIds: string[] = []
+    let rootJob = jobs.find(j => j.id === revealJobId)
+    while (rootJob?.parentJobId) rootJob = jobs.find(j => j.id === rootJob!.parentJobId)
+    let folderId: string | null | undefined = rootJob?.folderId
+    while (folderId) {
+      ancestorFolderIds.push(folderId)
+      const folder = folders.find(f => f.id === folderId)
+      folderId = folder?.parentFolderId
+    }
+
+    if (ancestorJobIds.length > 0) {
+      setCollapsedJobIds(prev => {
+        const next = new Set(prev)
+        ancestorJobIds.forEach(id => next.delete(id))
+        return next
+      })
+    }
+
+    if (ancestorFolderIds.length > 0) {
+      setCollapsedFolderIds(prev => {
+        const next = new Set(prev)
+        ancestorFolderIds.forEach(id => next.delete(id))
+        return next
+      })
+    }
+
+    // Scroll after React re-renders the expanded tree
+    const id = revealJobId
+    setRevealJobId(null)
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-job-id="${id}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }, 50)
+  }, [revealJobId])
 
   function toggleJobCollapsed(jobId: string) {
     setCollapsedJobIds(prev => {

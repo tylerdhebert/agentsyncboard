@@ -157,6 +157,10 @@ function ReviewActions({ job }: { job: Job }) {
   })
 
   if (job.status !== 'in-review' || !job.requireReview) return null
+  // For impl jobs, LGTM records human signoff but leaves the job in-review while
+  // downstream review work continues. Hide the controls once LGTM is recorded so
+  // the human cannot submit a second LGTM or request-changes after their turn is done.
+  if (job.type === 'impl' && job.reviewOutcome === 'lgtm') return null
 
   const heading = job.type === 'review' ? 'review signoff' : 'human review'
   const sublabel = job.type === 'impl'
